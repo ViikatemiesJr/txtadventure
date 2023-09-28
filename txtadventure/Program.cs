@@ -42,6 +42,10 @@ namespace txtadventure
                 {
                     openInventory(rawChar, inventory, timeLocat);
                 }// Inventory
+                else if (valinta == -3)
+                {
+                    openDebugMenu(rawChar, inventory, timeLocat);
+                }// Hidden DeBug Menu, open by inputting "tes"
                 else
                 {
                     Console.Clear();
@@ -125,7 +129,11 @@ namespace txtadventure
         /* Things to Add later:
          *      Skipped due to lack of mechanics or came in mind when doing smt else
          *      
+         *      Check if char has 0 hp or blank svfile, force new char creation.
          *      Drunken sex @ openInventor(), case 2, case 7
+         *      inventory wild potion @ openInventory, case 2, case 8
+         *      ingame hidden debug menu (tes to get in) (gain or lose hp, gain or lose money, gain or lose any item (incl. weps & horse), 
+         *          gain or lose status effects, tp to location reset location, gain or lose karma, gain or lose bounty, set time and day), change sex, set any stat
          */
         static void winSize()
         {
@@ -200,8 +208,8 @@ namespace txtadventure
             items[0] = 100; items[1] = 1; items[2] = 1; items[3] = 0; writeLineToItems(items, 18);// narcotics
             items[0] = 100; items[1] = 1; items[2] = 0; items[3] = 0; writeLineToItems(items, 19);// vampire ash
             items[0] = 100; items[1] = 1; items[2] = 0; items[3] = 0; writeLineToItems(items, 20);// voxor ore
-            //      value
-            items[0] = 100; writeLineToItems(items, 2);// Horse
+            //      value,          blank,         blank,       blank.
+            items[0] = 100; items[1] = 0; items[2] = 0; items[3] = 0; writeLineToItems(items, 2);// Horse
 
         }// Item ja Weaps statit
         static void prepareSaveFile()
@@ -477,37 +485,43 @@ namespace txtadventure
             int value = 0;
             if (File.Exists("C:\\temp\\txtadventure\\SVfile.txt"))
             {
-                bool cont = true;
-                while (cont)
+                string[] svFile = File.ReadAllLines("C:\\temp\\txtadventure\\SVfile.txt");
+                if (svFile[0] == "0") { File.Delete("C:\\temp\\txtadventure\\SVfile.txt"); value = -2; }
+                else if (readSlotFromSVFile(1,1) == 0) { File.Delete("C:\\temp\\txtadventure\\SVfile.txt"); value = -3; }
+                else
                 {
-                    Console.WriteLine("\n  Welcome to txt adventure game.\n\n  WARNING! This game contains descriptions of events that can trigger old traumas.\n  Violence, Sex, Drugs, Gambling, Human Trafficking\n  Play at your own risk. You have been warned.\n\n  Save file detected\n  Do you want to continue from it, or start fresh?\n\n  Type Y or y for continue, N or n for new game");
-                    switch (Console.ReadLine())
+                    bool cont = true;
+                    while (cont)
                     {
-                        case "Y":
-                        case "y":
-                        case "1":
-                            value = 1; cont = false;
-                            break;
-                        case "N":
-                        case "n":
-                        case "2":
-                            Console.WriteLine("Creating new file will permanently delete your old savefile\nDo you want to proceed?\n\nType F to proceed, to Cancel type anything else");
-                            switch (Console.ReadLine())
-                            {
-                                case "F":
-                                case "f":
-                                    File.Delete("C:\\temp\\txtadventure\\SVfile.txt");
-                                    value = -1; cont = false;
-                                    break;
-                            }
-                            break;
-                        default:
-                            Console.WriteLine("Invalid selection, press *Enter* and try again");
-                            Console.ReadLine();
-                            break;
+                        Console.WriteLine("\n  Welcome to txt adventure game.\n\n  WARNING! This game contains descriptions of events that can trigger old traumas.\n  Violence, Sex, Drugs, Gambling, Human Trafficking\n  Play at your own risk. You have been warned.\n\n  Save file detected\n  Do you want to continue from it, or start fresh?\n\n  Type Y or y for continue, N or n for new game");
+                        switch (Console.ReadLine())
+                        {
+                            case "Y":
+                            case "y":
+                            case "1":
+                                value = 1; cont = false;
+                                break;
+                            case "N":
+                            case "n":
+                            case "2":
+                                Console.WriteLine("Creating new file will permanently delete your old savefile\nDo you want to proceed?\n\nType F to proceed, to Cancel type anything else");
+                                switch (Console.ReadLine())
+                                {
+                                    case "F":
+                                    case "f":
+                                        File.Delete("C:\\temp\\txtadventure\\SVfile.txt");
+                                        value = -1; cont = false;
+                                        break;
+                                }
+                                break;
+                            default:
+                                Console.WriteLine("Invalid selection, press *Enter* and try again");
+                                Console.ReadLine();
+                                break;
+                        }
+                        Console.Clear();
                     }
-                    Console.Clear();
-                }                
+                }
             }
             return value;
         }// 0 = no sv, -1 = ng, 1 = continue
@@ -766,6 +780,64 @@ namespace txtadventure
             for (int i = 0; i < 94; i++)
                 Console.Write("-");
             Console.WriteLine("\n");
+        }
+        static void openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat)
+        {
+            bool cont = true; int[] status = readLineFromSVFileForEvent(3); string txt;
+            while (cont)
+            {
+                Console.Clear();
+                printHUD(rawChar, inventory, timeLocat); txt = "";
+                Console.WriteLine("  This is DeBug Menu. Using this can make some unwanted stuff to happen. No confirmations in here, what you input will happen." +
+                    "\n  This is not intended for regular gameplay. If you input invalid value, nothing will happen and you will be returned to this menu." +
+                    "\n\n  0 to 'Exit'" +
+                    "\n  1 to change 'Inventory' items including weapon and stats" +
+                    "\n  2 to gain, lose or set 'Gold'" +
+                    "\n  3 to gain, lose or set current 'Health'" +
+                    "\n  4 to gain, lose or set 'Stats'" +
+                    "\n  5 to change gender" +
+                    "\n  6 to set 'Time' and 'Day'" +
+                    "\n  7 to 'Teleport' to any 'Location'" +
+                    "\n  8 to 'Reset' any 'Location'" +
+                    "\n  9 to edit some 'Status effects'" +
+                    "\n  10 to gain, lose or set 'Karma'" +
+                    "\n  11 to gain, lose or set 'Bounty'");
+                string val = Console.ReadLine();
+                Console.Clear();
+                printHUD(rawChar, inventory, timeLocat);
+                switch (val)
+                {
+                    case "0":
+                        cont = false;
+                        break;// Exit
+                    case "1":
+                        break;// Inventory
+                    case "2":
+                        break;// Gold
+                    case "3":
+                        break;// Health
+                    case "4":
+                        break;// Stats
+                    case "5":
+                        break;// Gender
+                    case "6":
+                        break;// Time & Day
+                    case "7":
+                        break;// tp to Location
+                    case "8":
+                        break;// reset Location
+                    case "9":
+                        break;// Statuses
+                    case "10":
+                        break;// Karma
+                    case "11":
+                        break;// Bounty
+                }
+                writeSaveFile(rawChar, inventory, timeLocat);
+                writeLineToSVFile(status, 3);
+                txt += "\n  Press *Enter* to Continue."; Console.WriteLine(txt); Console.ReadLine();
+
+            }            
         }
         static string updateTimeAndReturnTxt(int[] timeLocat, int step, int[] rawChar, int[] inventory) // example: time 1630, step 90
         {
@@ -1502,6 +1574,8 @@ namespace txtadventure
                     case "I":
                     case "i":
                         return -2;
+                    case "tes":
+                        return -3;
 
                 }// Quit ja Inventory tarkistus                
                 try
