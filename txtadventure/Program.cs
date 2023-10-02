@@ -129,7 +129,6 @@ namespace txtadventure
         /* Things to Add later:
          *      Skipped due to lack of mechanics or came in mind when doing smt else
          *      
-         *      Check if char has 0 hp or blank svfile, force new char creation.
          *      Drunken sex @ openInventor(), case 2, case 7
          *      inventory wild potion @ openInventory, case 2, case 8
          *      ingame hidden debug menu (tes to get in) (gain or lose hp, gain or lose money, gain or lose any item (incl. weps & horse), 
@@ -813,6 +812,25 @@ namespace txtadventure
                     case "1":
                         break;// Inventory
                     case "2":
+                        try
+                        {                            
+                            Console.WriteLine("  1 for addition or subtraction of Gold, 2 to set specific value to Gold.");
+                            int val2 = int.Parse(Console.ReadLine(); int val3;
+                            if (val2 == 1)
+                            {
+                                Console.WriteLine("  How much gold you want to add or substract. Use negative number for substraction.");
+                                val3 = int.Parse(Console.ReadLine());
+                                inventory[0] += val3;
+                            }
+                            else if (val2 == 2)
+                            {
+                                Console.WriteLine("  What value you want your Gold to be.");
+                                val3 = int.Parse(Console.ReadLine());
+                                inventory[0] = val3;
+                            }
+                            txt = "  Your Gold amount was set to " + inventory[0];
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Gold
                     case "3":
                         break;// Health
