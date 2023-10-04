@@ -41,7 +41,7 @@ namespace txtadventure
                 }// Quit käsittely
                 else if (valinta == -2)
                 {
-                    openInventory(rawChar, inventory, timeLocat);
+                   Quit = openInventory(rawChar, inventory, timeLocat);
                 }// Inventory
                 else if (valinta == -3)
                 {
@@ -51,11 +51,10 @@ namespace txtadventure
                 {
                     Console.Clear();
                     printHUD(rawChar, inventory, timeLocat);
-                    Quit = eventHandler(rawChar, inventory, timeLocat, valinta);
-                    if (Quit == false)
-                        writeSaveFile(rawChar, inventory, timeLocat);
+                    Quit = eventHandler(rawChar, inventory, timeLocat, valinta);                    
                     Console.Clear();
                 }// Events
+                if (Quit == false) writeSaveFile(rawChar, inventory, timeLocat);
             }
             File.Delete("C:\\temp\\txtadventure\\Weaps.txt");
             File.Delete("C:\\temp\\txtadventure\\Items.txt");
@@ -131,9 +130,10 @@ namespace txtadventure
          *      Skipped due to lack of mechanics or came in mind when doing smt else
          *      
          *      Drunken sex @ openInventor(), case 2, case 7
+         *      Drunken abortion
          *      inventory wild potion @ openInventory, case 2, case 8
          */
-        // File handling
+        // File Handling
         static void winSize()
         {
             try
@@ -1010,12 +1010,13 @@ namespace txtadventure
                             else { txt = "Invalid number."; break; }
                             if (inventory[1] <= 0)
                             {
-                                Console.WriteLine("  WARNING! You set your Health to or below 0. Input Y or y to proceed. This WILL kill you.\n  Input anything else to be left at 1 Health.");
+                                Console.WriteLine("  WARNING! You set your Health to or below 0. Input Y or y to proceed. This MIGHT kill you.\n  Input anything else to be left at 1 Health.");
                                 switch (Console.ReadLine())
                                 {
                                     case "Y":
                                     case "y":
-                                        return deathHandler("Mysterious forses of TES");
+                                        if (looseHpCheckForPots(inventory, rawChar, timeLocat) <= 0) return deathHandler("Mysterious forses of TES");
+                                        break;
                                     default:
                                         inventory[1] = 1;
                                         break;
@@ -1322,9 +1323,9 @@ namespace txtadventure
                 writeLineToSVFile(status, 3);
                 txt += "\n  Press *Enter* to Continue."; Console.WriteLine(txt); Console.ReadLine();
             }
-            return true;
+            return false;
         }
-        static void openInventory(int[] rawChar, int[] inventory, int[] timeLocat)
+        static bool openInventory(int[] rawChar, int[] inventory, int[] timeLocat)
         {
             bool cont = true; int val; int val2;
             while (cont)
@@ -1464,11 +1465,110 @@ namespace txtadventure
                                                 }
                                                 break;// beer
                                             case 8:
-                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "' txt";
+                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "' will make random permanent thing happen." +
+                                                    "\n  As you look at the suspiciously looking potion, you question yourself if it's really worth the risk to taste this concoction. Do you feel lucky enough?" +
+                                                    "\n  After pondering possibilities of this potion cause, you'll realize that you should finally decide if you just drink it or focus your thoughts elsewhere." +
+                                                    "\n  Y or y to drink, anything else cancels this action";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0;
+                                                    int category = rnd.Next(-30 + rawChar[6] * 10, 70 + rawChar[6] * 10); int specific = rnd.Next(1, 100);
+                                                    if (category >= 80)
+                                                    {
+                                                        if (specific >= 50)
+                                                        {
+
+                                                        }// gain stats
+                                                        else if (specific >= 37 && category < 50)
+                                                        {
+
+                                                        }// gain a lot of money
+                                                        else if (specific >= 25 && category < 37)
+                                                        {
+
+                                                        }// gain mountain info
+                                                        else
+                                                        {
+
+                                                        }// a lot of food for all
+                                                    }// Very Good // gain stats, gain a lot of money, gain mountain info, a lot food for all
+                                                    else if(category >= 60 && category < 80)
+                                                    {
+                                                        if (specific >= 75)
+                                                        {
+
+                                                        }// gain money
+                                                        else if (specific >= 50 && category < 75)
+                                                        {
+
+                                                        }// gain karma
+                                                        else if (specific >= 25 && category < 50)
+                                                        {
+
+                                                        }// lose bounty
+                                                        else
+                                                        {
+
+                                                        }// food for all
+                                                    }// Good // gain money, gain karma, lose bounty, food for all
+                                                    else if (category >= 40 && category < 60)
+                                                    {
+                                                        if (specific >= 72)
+                                                        {
+
+                                                        }// change gender
+                                                        else if (specific >= 44 && category < 72)
+                                                        {
+
+                                                        }// teleport
+                                                        else if (specific >= 28 && category < 44)
+                                                        {
+
+                                                        }// reverse stat
+                                                        else
+                                                        {
+
+                                                        }// get drunk
+                                                    }// Neutral // Change gender, teleport, reverse stat, get drunk
+                                                    else if (category >= 20 && category < 40)
+                                                    {
+                                                        if (specific >= 75)
+                                                        {
+
+                                                        }// lose hp
+                                                        else if (specific >= 50 && category < 75)
+                                                        {
+
+                                                        }// lose karma
+                                                        else if (specific >= 25 && category < 50)
+                                                        {
+
+                                                        }// get bounty
+                                                        else
+                                                        {
+
+                                                        }// get hangover (lose beer buff if active)
+                                                    }// Bad // lose hp, lose karma, get bounty, get hangover
+                                                    else
+                                                    {
+                                                        if (specific >= 75)
+                                                        {
+
+                                                        }// lose stats
+                                                        else if (specific >= 50 && category < 75)
+                                                        {
+
+                                                        }// get std
+                                                        else if (specific >= 25 && category < 50)
+                                                        {
+
+                                                        }// get pregnant or gain a lot of bounty
+                                                        else
+                                                        {
+
+                                                        }// lose a lot hp
+                                                    }// Very Bad // lose stats, get std, get pregnant, lose a lot hp
                                                 }
+                                                else Console.WriteLine("  You think it might be best if this one stays in it's bottle, atleast for now.");
                                                 break;// wild potion
                                             case 9:
                                                 infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. Drinking this will cure any illnesses from hangover to std's," +
@@ -1647,6 +1747,7 @@ namespace txtadventure
                 writeSaveFile(rawChar, inventory, timeLocat);
                 Console.Clear();
             }
+            return false;
         }
         static int[] createChar(int[] rawChar)
         {
@@ -1897,7 +1998,7 @@ namespace txtadventure
             }
             return val;
         }
-        // Basic Sub Funcs
+        // Basic Subs
         static bool useItemConfirm(string infoTxt)
         {
             bool useit = false; Console.WriteLine(infoTxt); Console.WriteLine("  If you want to use or activate this, input Y or y, any other input will cancel this action.");
@@ -1919,6 +2020,52 @@ namespace txtadventure
             Console.WriteLine("  You died, cause of death was " + causeOfDeathTxt + "\n\n  Closing the game and deleting savefile. Press *Enter*.");
             Console.ReadLine();
             return true;
+        }
+        static int looseHpCheckForPots(int[] inventory, int[] rawChar, int[] timeLocat)
+        {
+
+            int minorHP = 0; int majorHP = 0; int karma = readSlotFromSVFile(3, 2);
+            for (int i = 4; i <= 12; i++)
+            {
+                if (inventory[i] == 14)
+                {
+                    minorHP++; inventory[i] = 0;
+                    if (inventory[1] < rawChar[5] * 2)
+                    {
+                        inventory[1] += 1;
+                        if (inventory[1] > rawChar[5] * 2) inventory[1] = rawChar[5] * 2;
+                    }
+                }
+                else if (inventory[i] == 15)
+                {
+                    majorHP++; inventory[i] = 0;
+                    if (inventory[1] < rawChar[5] * 2)
+                    {
+                        inventory[1] += 4;
+                        if (inventory[1] > rawChar[5] * 2) inventory[1] = rawChar[5] * 2;
+                    }
+                }
+                if (inventory[1] >= 1)
+                {
+                    Console.WriteLine("  You were fataly wounded but luckily you had some potions in your inventory.\n  In a rush you managed to drink first potion(s) that your hand could reach.");
+                    if (minorHP > 0 && majorHP > 0) Console.WriteLine("  You consumed {0} HP Potion and {1} HP Potion +", minorHP, majorHP);
+                    else if (minorHP > 0) Console.WriteLine("  You consumed {0} HP Potion", minorHP);
+                    else if (minorHP > 0) Console.WriteLine("  You consumed {0} HP Potion +", majorHP);
+                    break;
+                }                
+            }
+            if (karma >= 100) 
+            {
+                inventory[1] = rawChar[5] * 2; timeLocat[1] = 24;
+                if (inventory[1] <= 0) inventory[1] = 1;
+                Console.WriteLine("  As you are about to draw your last breath, you see a blinding yellow light, and you hear a echoing voice say" +
+                    "\n  'Pilgrim, it's not your time, take this divine blessing and continue your journey.'" +
+                    "\n  After that you wake up kneeling infront of Fel Mara's monastery's altar." +
+                    "\n  You ain't sure if it's just a dream since all the mortal pain from your wounds along the wounds themselves are gone," +
+                    "\n  but some monks and nuns that rushed to greet you claim it was divine intervention from Ehphine The Goddess of Life.");
+                karma -= 75; writeSlotToSVFile(3, 2, karma);
+            }
+            return inventory[1];
         }
         // Event Handler Subs
         static int[] locationChoices(int location, int[] rawChar, int igTime)
@@ -2091,7 +2238,7 @@ namespace txtadventure
                         info = readLineFromSVFileForEvent(location);
                     Console.WriteLine("  This inn isn't that crowded, but still, it's not empty.\n  Perfect place to try to find some rumors, spend some time or steal from the patrons.");
                     break;// inn (Fain)
-            }
+            }// FEL FAIN
         }// Paikkojen kuvaukset
         static int locationChoicesTxtAndAmount(int location, int[] rawChar, int igTime)
         {
@@ -2116,7 +2263,7 @@ namespace txtadventure
                     if (readSlotFromSVFile(0, 0) == 1) Console.Write(" 7 to try to make profit by seduction,");
                     else Console.Write(" 7 to start a brawl by threatening to get some loot,");
                     break;// inn (Fain)
-            }
+            }// FEL FAIN
             Console.Write(" For Inventory use I or i, For Save & Quit use Q or q");
             Console.WriteLine();
             return määrä;
@@ -2127,7 +2274,7 @@ namespace txtadventure
             string txt; int[] info; Random rnd = new Random(); bool deathQuit = false;
             info = readLineFromSVFileForEvent(timeLocat[1]);
             int[] status = readLineFromSVFileForEvent(3);
-            int pregmod = readSlotFromSVFile(3, 14);
+            int pregmod = status[14];
             switch (timeLocat[1]) // Sijainti
             {                
                 case 5:                     
@@ -2517,7 +2664,7 @@ namespace txtadventure
                             break;
                     }
                     break;// Inn (Fain) {heardRumor}
-            }
+            }// FEL FAIN (eri switchit joka alueelle (fain, mara, road,))
             writeSaveFile(rawChar, inventory, timeLocat);
             writeLineToSVFile(status, 3);
             return deathQuit;
