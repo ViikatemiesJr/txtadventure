@@ -1,5 +1,6 @@
 ﻿using System;//
 using System.Collections.Generic;//
+using System.Diagnostics.Eventing.Reader;
 using System.IO;//
 using System.Linq;//
 using System.Text;//
@@ -44,7 +45,7 @@ namespace txtadventure
                 }// Inventory
                 else if (valinta == -3)
                 {
-                    openDebugMenu(rawChar, inventory, timeLocat);
+                    Quit = openDebugMenu(rawChar, inventory, timeLocat);
                 }// Hidden DeBug Menu, open by inputting "tes"
                 else
                 {
@@ -131,8 +132,6 @@ namespace txtadventure
          *      
          *      Drunken sex @ openInventor(), case 2, case 7
          *      inventory wild potion @ openInventory, case 2, case 8
-         *      ingame hidden debug menu (tes to get in) (gain or lose hp, gain or lose money, gain or lose any item (incl. weps & horse), 
-         *          gain or lose status effects, tp to location reset location, gain or lose karma, gain or lose bounty, set time and day), change sex, set any stat
          */
         static void winSize()
         {
@@ -780,17 +779,17 @@ namespace txtadventure
                 Console.Write("-");
             Console.WriteLine("\n");
         }
-        static void openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat)
+        static bool openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat)
         {
             bool cont = true; int[] status = readLineFromSVFileForEvent(3); string txt;
             while (cont)
             {
                 Console.Clear();
-                printHUD(rawChar, inventory, timeLocat); txt = "";
+                printHUD(rawChar, inventory, timeLocat); txt = ""; int val2;
                 Console.WriteLine("  This is DeBug Menu. Using this can make some unwanted stuff to happen. No confirmations in here, what you input will happen." +
                     "\n  This is not intended for regular gameplay. If you input invalid value, nothing will happen and you will be returned to this menu." +
                     "\n\n  0 to 'Exit'" +
-                    "\n  1 to change 'Inventory' items including weapon and stats" +
+                    "\n  1 to change 'Inventory' items including weapon and horse" +
                     "\n  2 to gain, lose or set 'Gold'" +
                     "\n  3 to gain, lose or set current 'Health'" +
                     "\n  4 to gain, lose or set 'Stats'" +
@@ -810,17 +809,59 @@ namespace txtadventure
                         cont = false;
                         break;// Exit
                     case "1":
+                        try
+                        {
+                            Console.WriteLine("  1 to edit Items, 2 to change Weapon, 3 to toggle Horse.");
+                            switch (Console.ReadLine())
+                            {
+                                case "1":
+                                    Console.WriteLine("  Which inventory slot you want to edit? ( 1 to 9 )");
+                                    int val3 = int.Parse(Console.ReadLine()) + 3;
+                                    if (val3 >= 4 && val3 <= 12 )
+                                    {
+                                        Console.WriteLine("  To what item you want to change this? You currently have " + getItemTxtWithJustId(val3) + " in this slot");
+                                        Console.WriteLine("  0 = Empty, 1 = Rabbit Foot, 2 = Baby, 3 = Ration, 4 = Beer, 5 =  Wild Potion," +
+                                            "\n  6 = Cure Potion, 7 = Poison, 8 = Lockpick, 9 = Haybale, 10 = Torch, 11 = HP Potion," +
+                                            "\n  12 = HP Potion +, 13 = Buff Potion, 14 = Vox Potion, 15 = Narcotics, 16 = Vampire Ash, 17 = Voxor Ore");
+                                        int val4 = int.Parse(Console.ReadLine());
+                                        if (val4 == 0) { inventory[val3] = val4; txt = "  Set inventory slot " + (val3 - 3) + " as Empty."; }
+                                        else if (val4 >= 1 && val4 <= 17) { inventory[val3] = val4 + 3; txt = "  Set inventory slot " + (val3 - 3) + " as " + getItemTxtWithJustId(val4) + "."; }
+                                        else txt = "Invalid number";
+                                    }
+                                    else txt = "Invalid number";
+                                    break;// edit items
+                                case "2":
+                                    Console.WriteLine("  Your current weapon is " + getWeapTxt(inventory));
+                                    Console.WriteLine("  What weapon would you like to have?" +
+                                        "\n  No weapon = 0" +
+                                        "\n  TIER 1: 2H Axe = 1, Dagger = 2, Short Sword = 3" +
+                                        "\n  TIER 2: Greataxe = 4, Tanto = 5, Scimitar = 6," +
+                                        "\n  TIER 3: Voxe = 7, Vogger = 8, Voxord = 9.");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 >= 0 && val2 <= 9) { inventory[3] = val2; txt = "  Your wwapon was changed to " + getWeapTxt(inventory); }
+                                    else txt = "Invalid number";
+                                    break;// change weapon
+                                case "3":
+                                    if (inventory[2] == 0) { inventory[2] = 1; txt = "  You now have a horse."; }
+                                    else { inventory[2] = 0; txt = "  You lost your horse."; }
+                                    break;// horse toggle
+                                default:
+                                    txt = "Invalid number";
+                                    break;
+                            }                            
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Inventory
                     case "2":
                         try
                         {                            
                             Console.WriteLine("  1 for addition or subtraction of Gold, 2 to set specific value to Gold.");
-                            int val2 = int.Parse(Console.ReadLine(); int val3;
+                            val2 = int.Parse(Console.ReadLine()); int val3;
                             if (val2 == 1)
                             {
-                                Console.WriteLine("  How much gold you want to add or substract. Use negative number for substraction.");
+                                Console.WriteLine("  How much Gold you want to add or substract. Use negative number for substraction.");
                                 val3 = int.Parse(Console.ReadLine());
-                                inventory[0] += val3;
+                                inventory[0] += val3;                                
                             }
                             else if (val2 == 2)
                             {
@@ -828,34 +869,346 @@ namespace txtadventure
                                 val3 = int.Parse(Console.ReadLine());
                                 inventory[0] = val3;
                             }
-                            txt = "  Your Gold amount was set to " + inventory[0];
+                            else { txt = "Invalid number."; break; }
+                            if (inventory[0] < 0) inventory[0] = 0;
+                            if (txt == "") txt = "  Your Gold amount was set to " + inventory[0];
                         }
                         catch { txt = "Invalid number."; }
                         break;// Gold
                     case "3":
+                        try
+                        {
+                            Console.WriteLine("  1 for addition or subtraction of Health, 2 to set specific value to Health.");
+                            val2 = int.Parse(Console.ReadLine()); int val3;
+                            if (val2 == 1)
+                            {
+                                Console.WriteLine("  How much Health you want to add or substract. Use negative number for substraction.");
+                                val3 = int.Parse(Console.ReadLine());
+                                inventory[1] += val3;
+                            }
+                            else if (val2 == 2)
+                            {
+                                Console.WriteLine("  What value you want your Health to be.");
+                                val3 = int.Parse(Console.ReadLine());
+                                inventory[1] = val3;
+                            }
+                            else { txt = "Invalid number."; break; }
+                            if (inventory[1] <= 0) 
+                            {
+                                Console.WriteLine("  WARNING! You set your Health to or below 0. Input Y or y to proceed. This WILL kill you.\n  Input anything else to be left at 1 Health.");
+                                switch (Console.ReadLine())
+                                {
+                                    case "Y":
+                                    case "y":
+                                        deathHandler("Mysterious forses of TES");
+                                        return false;
+                                    default:
+                                        inventory[1] = 1;
+                                        break;
+                                }
+                            }
+                            if (txt == "") txt = "  Your Health amount was set to " + inventory[0];
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Health
                     case "4":
+                        try
+                        {
+                            Console.WriteLine("  1 for addition or subtraction of stats, 2 to set specific value to stat.");
+                            val2 = int.Parse(Console.ReadLine()); int val3;
+                            Console.WriteLine("  What stat you want to edit?\n   1 for Str, 2 for Agi, 3 for Char, 4 for Endu, 5 for Luck.");
+                            int val4 = int.Parse(Console.ReadLine()) + 1;
+                            string statTxt = getStatTxt(val4);
+                            if (val2 == 1 && val4 >= 2 && val4 <= 6)
+                            {
+                                Console.WriteLine("  How much you want to add or substract " + statTxt + ". Use negative number for substraction.");
+                                val3 = int.Parse(Console.ReadLine());
+                                rawChar[val4] += val3;
+                            }
+                            else if (val2 == 2 && val4 >= 2 && val4 <= 6)
+                            {
+                                Console.WriteLine("  What value you want your " + statTxt + " to be.");
+                                val3 = int.Parse(Console.ReadLine());
+                                rawChar[val4] = val3;
+                            }
+                            else { txt = "Invalid number."; break; }
+                            if (txt == "") txt = "  One of your " + statTxt + " was set to " + rawChar[val4];
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Stats
                     case "5":
+                        if (rawChar[0] == 0) { rawChar[0] = 1; Console.WriteLine("  You changed your gender to Female"); }
+                        else if (rawChar[0] == 1) { rawChar[0] = 0; Console.WriteLine("  You changed your gender to Male"); }
+                        else { rawChar[0] = 0; Console.WriteLine("  Detected invalid gender. It was set to Male"); }
                         break;// Gender
                     case "6":
+                        try
+                        {
+                            Console.WriteLine("  1 to change time, 2 to change day.");
+                            val2 = int.Parse(Console.ReadLine()); int val3;
+                            if (val2 == 1) 
+                            {
+                                Console.WriteLine("  What hour you want to set. Value will be crimped between 0 and 23");
+                                int val4 = int.Parse(Console.ReadLine()); string time;
+                                if (val4 < 0) time = "00";
+                                else if (val4 > 23) time = "23";
+                                else if (val4 >= 0 && val4 < 10) time = "0" +  val4;
+                                else time = Convert.ToString(val4);
+                                Console.WriteLine("  What minute you want to set. Value will be crimped between 0 and 59");
+                                val3 = int.Parse(Console.ReadLine());
+                                if (val3 < 0) time += "00";
+                                else if (val3 > 59) time += "59";
+                                else if (val3 >= 0 && val3 < 10) time += "0" + val3;
+                                else time += Convert.ToString(val3);
+                                timeLocat[0] = Convert.ToInt32(time);
+                                txt = "  Your time was set as " + time;
+                            }
+                            else if (val2 == 2)
+                            {
+                                Console.WriteLine("  What day number you want to set.");
+                                val3 = int.Parse(Console.ReadLine());
+                                if (val3 > 1) val3 = 1;
+                                timeLocat[2] = val3;
+                                txt = "  Your day number was set to " + timeLocat[2];
+                            }
+                            else { txt = "Invalid number."; break; }
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Time & Day
                     case "7":
+                        try
+                        {
+                            Console.WriteLine("  What location you want to TELEPORT");
+                            Console.WriteLine("  FEL FAIN: 5 = start barn, 6 = main street, 7 = inn, 8 = smith, 9 = stable, " +
+                                "\n  10 = generalstore, 11 = shrine, 12 = back alley, 13 = castle, 14 = prison");
+                            Console.WriteLine("  FEL MARA: 15 = main street, 16 = inn, 17 = smith, 18 = stable, 19 = generalstore," +
+                                "\n  20 = alchemist, 21 = temple, 22 = arena, 23 = slavemarket, 24 = monastery," +
+                                "\n  25 = back alley, 26 = marketsquare, 27 = castle, 28 = prison");
+                            Console.WriteLine("  ROAD: 29 = cave, 30 = crossroads, 31 = inn, 32 = ruins, 33 = mines, 34 = mountains");
+                            val2 = int.Parse(Console.ReadLine());
+                            if (val2 >= 5 && val2 <= 34) { timeLocat[1] = val2; txt = "  Teleport completed."; }
+                            else { txt = "Invalid number."; break; }
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// tp to Location
                     case "8":
+                        try
+                        {
+                            Console.WriteLine("  What location you want to RESET");
+                            Console.WriteLine("  FEL FAIN: 5 = start barn, 6 = main street, 7 = inn, 8 = smith, 9 = stable, " +
+                                "\n  10 = generalstore, 11 = shrine, 12 = back alley, 13 = castle, 14 = prison");
+                            Console.WriteLine("  FEL MARA: 15 = main street, 16 = inn, 17 = smith, 18 = stable, 19 = generalstore," +
+                                "\n  20 = alchemist, 21 = temple, 22 = arena, 23 = slavemarket, 24 = monastery," +
+                                "\n  25 = back alley, 26 = marketsquare, 27 = castle, 28 = prison");
+                            Console.WriteLine("  ROAD: 29 = cave, 30 = crossroads, 31 = inn, 32 = ruins, 33 = mines, 34 = mountains");
+                            val2 = int.Parse(Console.ReadLine());
+                            if (val2 >= 5 && val2 <= 34)
+                            {
+                                string[] lines = File.ReadAllLines("C:\\temp\\txtadventure\\SVfile.txt");
+                                lines[val2] = "0";
+                                File.WriteAllLines("C:\\temp\\txtadventure\\SVfile.txt", lines);
+                                txt = "  Location reset completed.";
+                            }
+                            else { txt = "Invalid number."; break; }
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// reset Location
                     case "9":
+                        try
+                        {
+                            Console.WriteLine("  What status you want to change?" +
+                                "\n  1 for std, 2 for drunk, 3 for pregnant, 4 for hungry, 5 for hangover," +
+                                "\n  6 for skillup (reset), 7 for amount of sex (f) or using threats (m), 8 for mountain info, 9 for horse exhaustion, 10 for hungry baby");
+                            string txt2;
+                            switch (Console.ReadLine())
+                            {                                
+                                case "1":
+                                    if (status[1] == 0) txt2 = "Not Active";
+                                    else if (status[1] > 0) txt2 = "Hiddenly Activated";
+                                    else txt2 = "Active";
+                                    Console.WriteLine("  Your Std stage is currently " + txt2 + "\n  What stage you want to set it? 1 for Not Active, 2 for Hiddenly Activated, 3 for Active, 0 to not change it.");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 == 1 || val2 == 2 || val2 == 3)
+                                    {
+                                        if (status[1] < 0) rawChar[2] -= status[1];
+                                        if (val2 == 2) status[1] = timeLocat[2];
+                                        else if (val2 == 3) { status[1] = 0 - rawChar[2]; rawChar[2] = 0; }
+                                        else status[1] = 0;
+                                        if (status[1] == 0) txt2 = "Not Active.";
+                                        else if (status[1] > 0) txt2 = "Hiddenly Activated.";
+                                        else txt2 = "Active.";
+                                        txt = "  Std status changed to " + txt2;
+                                    }
+                                    else txt = "  Not changing Std status";
+                                    break;// std
+                                case "2":
+                                    Console.WriteLine("  You have currently " + status[4] + " beers active." +
+                                        "\n  How many beers you want it to be?");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < 0) val2 = 0;
+                                    if (status[4] == 0 && val2 > 0)
+                                    {
+                                        if (status[7] == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; }
+                                        status[4] = 1; rawChar[2] += 1; rawChar[3] -= 1; rawChar[4] += 2;
+                                    } 
+                                    else if (status[4] > 0 && val2 == 0) { status[4] = 0; rawChar[2] -= 1; rawChar[3] += 1; rawChar[4] -= 2;}
+                                    else status[4] = val2;
+                                    txt = "  Your drunk status has been updated as " + status[4] + " beers.";
+                                    if (status[4] >= 4) txt += " Next time you'll drink a beer, you will trigger 'Blackout' event.";
+                                    break;// drunk
+                                case "3":
+                                    if (status[5] == -1) Console.WriteLine("  You are currently not pregnant.");
+                                    else Console.WriteLine("  You are current pregnancy is at day " + status[5]);
+                                    Console.WriteLine("  What pregnancy day would you like to set. -1 for not pregnant, otherwise it will be crimped between -1 and 90" +
+                                        "\n  pregnancy levels as days: -1 na, 0-5 hidden, 6-30 minor, 31-60 medium, 61-85 major, 86-90 extreme, 91 birth");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < -1) val2 = -1;
+                                    else if (val2 > 90) val2 = 90;
+                                    status[5] = val2;
+                                    txt = "  Your pregnancy level was set as " + status[5];
+                                    if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
+                                    if (status[14] >= 4) rawChar[3] += 1;
+                                    if (status[14] >= 5) { rawChar[3] += 4; rawChar[4] += 1; }
+                                    status[14] = 1;
+                                    if (status[5] >= 6) status[14] = 2;
+                                    if (status[5] >= 31) { rawChar[4] -= 1; rawChar[3] -= 1; status[14] = 3; }
+                                    if (status[5] >= 61) { rawChar[3] -= 1; status[14] = 4; }
+                                    if (status[5] >= 86) { rawChar[3] -= 3; rawChar[4] -= 1; status[14] = 5; }
+                                    if (status[5] >= 90) txt += "Next time daily check is initiated (by regular sleep or wait) your baby will be born.";
+                                    break;// pregnant
+                                case "4":
+                                    Console.WriteLine("  Last time you ate was during day " + status[6] + " and current day is " + timeLocat[2] + "\n  What day you want to assing here? Can be future day.");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < 0) val2 = 0;
+                                    status[6] = val2;
+                                    txt = "  Your previous meal was set as day " + status[6];
+                                    break;// hungry
+                                case "5":
+                                    if (status[7] == 0) Console.WriteLine("  You currently do not have hangover.");
+                                    else Console.WriteLine("  You are currently have hangover.");
+                                    Console.WriteLine("  What hangover status you want, 0 for No, 1 for Yes");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (status[7] != val2)
+                                    {
+                                        if (val2 == 0 || val2 == 1)
+                                        {
+                                            if (val2 == 0) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; }
+                                            else 
+                                            {
+                                                if (status[4] > 0) { status[7] = 1; status[4] = 0; rawChar[2] -= 2; rawChar[4] -= 3; }
+                                                else { status[7] = 1; rawChar[2] -= 1; rawChar[3] -= 1; rawChar[4] -= 1; }
+                                            }
+                                            txt = "  Your hangover status has been updated.";
+                                        }
+                                        else txt = "  Your hangover status was not changed.";
+                                    }
+                                    else txt = "  Your hangover status was not changed.";
+                                    break;// hangover
+                                case "6":
+                                    if (status[9] == 0) txt = "  You had no active skillup potions.";
+                                    else { rawChar[status[9]] -= 1; status[8] = 0; status[9] = 0; txt = "  Your skillup potion effect has been reset."; }
+                                    break;// skillup reset
+                                case "7":
+                                    Console.WriteLine("  You'v had sex or used threats " + status[10] + " times.");
+                                    Console.WriteLine("  Set number for how many times you have had sex (for female) or used threats (for male)");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < 0) val2 = 0;
+                                    status[10] = val2;
+                                    break;// amount of sex or threats
+                                case "8":
+                                    if (status[11] == 0) Console.WriteLine("  You do not yet have mountain info.\n  Do you want to change it as not found? Y or y to proceed, anything else will not change it.");
+                                    else Console.WriteLine("  You have already found mountain info.\n  Do you want to change it as found? Y or y to proceed, anything else will not change it.");
+                                    switch (Console.ReadLine())
+                                    {
+                                        case "Y":
+                                        case "y":
+                                            if (status[11] == 0) status[11] = 1;
+                                            else status[11] = 0;
+                                            txt = "  Your knowledge of mountain was changed.";
+                                            break;
+                                        default:
+                                            txt = "  Your knowledge of mountain was not changed.";
+                                            break;
+                                    }
+                                    break;// mountain info
+                                case "9":
+                                    Console.WriteLine("  Your horse exhaustion is at level " + status[12]);
+                                    Console.WriteLine("  What level do you want to set it as? Value will be crimped between 0 and 3.");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < 0) val2 = 0;
+                                    else if (val2 > 3) val2 = 3;
+                                    status[12] = val2;
+                                    txt = "  Your horses exhaustion level was set as " + status[12];
+                                    break;// horse exhaustion
+                                case "10":
+                                    Console.WriteLine("  Last time you fed your baby/babies was during day " + status[13] + " and current day is " + timeLocat[2] + "\n  What day you want to assing here? Can be future day.");
+                                    val2 = int.Parse(Console.ReadLine());
+                                    if (val2 < 0) val2 = 0;
+                                    status[13] = val2;
+                                    txt = "  Last time you fed your baby/babies was set as day " + status[13];
+                                    break;// hungry baby
+                                default:
+                                    txt = "Invalid selection.";
+                                    break;
+                            }
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Statuses
                     case "10":
+                        try
+                        {
+                            Console.WriteLine("  1 for addition or subtraction of Karma 2 to set specific value to Karma.");
+                            val2 = int.Parse(Console.ReadLine()); int val3;
+                            if (val2 == 1)
+                            {
+                                Console.WriteLine("  How much Karma you want to add or substract. Use negative number for substraction.");
+                                val3 = int.Parse(Console.ReadLine());
+                                status[2] += val3;
+                            }
+                            else if (val2 == 2)
+                            {
+                                Console.WriteLine("  What value you want your Karma to be.");
+                                val3 = int.Parse(Console.ReadLine());
+                                status[2] = val3;
+                            }
+                            else { txt = "Invalid number."; break; }
+
+                            if (txt == "") txt = "  Your Karma was set to " + status[2];
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Karma
                     case "11":
+                        try
+                        {
+                            Console.WriteLine("  1 for addition or subtraction of Bounty 2 to set specific value to Bounty.");
+                            val2 = int.Parse(Console.ReadLine()); int val3;
+                            if (val2 == 1)
+                            {
+                                Console.WriteLine("  How much Bounty you want to add or substract. Use negative number for substraction.");
+                                val3 = int.Parse(Console.ReadLine());
+                                status[3] += val3;
+                            }
+                            else if (val2 == 2)
+                            {
+                                Console.WriteLine("  What value you want your Bounty to be.");
+                                val3 = int.Parse(Console.ReadLine());
+                                status[3] = val3;
+                            }
+                            else { txt = "Invalid number."; break; }
+
+                            if (txt == "") txt = "  Your Bounty was set to " + status[3];
+                        }
+                        catch { txt = "Invalid number."; }
                         break;// Bounty
+                    default:
+                        txt = "Invalid number.";
+                        break;
                 }
                 writeSaveFile(rawChar, inventory, timeLocat);
                 writeLineToSVFile(status, 3);
                 txt += "\n  Press *Enter* to Continue."; Console.WriteLine(txt); Console.ReadLine();
-
-            }            
+            }
+            return true;
         }
         static string updateTimeAndReturnTxt(int[] timeLocat, int step, int[] rawChar, int[] inventory) // example: time 1630, step 90
         {
@@ -993,7 +1346,7 @@ namespace txtadventure
                                                     inventory[itemId] = 0; int drunk = status[4]; int hangover = status[7];
                                                     if (hangover == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; Console.WriteLine("  You forget your hangover quite quickly after another brew."); }
                                                     if (drunk == 0) { status[4] = 1; rawChar[2] += 1; rawChar[3] -= 1; rawChar[4] += 2; Console.WriteLine("  You feel drunk, strong and charismatic."); }
-                                                    else if (drunk > 0 && drunk <= 5) { status[4] = drunk++; Console.WriteLine("  Another beer but it feels like it didn't do anything."); }
+                                                    else if (drunk > 0 && drunk <= 5) { status[4] = drunk++; Console.WriteLine(" You drank another beer but it feels like it didn't do anything."); }
                                                     else if (drunk > 5)
                                                     {
                                                         int rahaKadotus = rnd.Next(0, 250 - rawChar[6] * 30);
@@ -1265,7 +1618,7 @@ namespace txtadventure
                 {
                     Console.WriteLine("  During past days it's become more obvious that you are actually pregnant." +
                         "\n  Since your belly has grow, most men seem to have grown resistant to your seduction attempts." +
-                        "\n  That bigger than usual belly has also mady you even slower than usual");
+                        "\n  That bigger than usual belly has also made you even slower than usual");
                     rawChar[4] -= 1; rawChar[3] -= 1; // charisma , agi
                     status[14] = 3;
                 }// medium
@@ -1295,6 +1648,7 @@ namespace txtadventure
                         if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
                         if (status[14] >= 4) rawChar[3] += 1;
                         if (status[14] >= 5) { rawChar[3] += 4; rawChar[4] += 1; }
+                        status[14] = 1;
                     }// malnutrition check
                 }
                 if (malnutrition == false) status[5] += 1;
@@ -1359,6 +1713,24 @@ namespace txtadventure
                 return "Warrior";
             else
                 return "ERROR";
+        }
+        static string getStatTxt(int statNro)
+        {//2 = #Str, 3 = #Agi, 4 = #Char, 5 = #Endu, 6 = #Luck
+            switch (statNro)
+            {
+                case 2:
+                    return "Strenght";
+                case 3:
+                    return "Agility";
+                case 4:
+                    return "Charisma";
+                case 5:
+                    return "Endurance";
+                case 6:
+                    return "Luck";
+                default:
+                    return "ERROR";
+            }
         }
         static string getItemTxtWithJustId(int id)
         {
@@ -1481,10 +1853,10 @@ namespace txtadventure
             else
                 return "ERROR";
         }
-        static bool deathHandler()
+        static bool deathHandler(string causeOfDeathTxt)
         {
             File.Delete("C:\\temp\\txtadventure\\SVfile.txt");
-            Console.WriteLine("  You died\n\n  Closing the game and deleting savefile. Press *Enter*.");
+            Console.WriteLine("  You died, cause of death was " + causeOfDeathTxt + "\n\n  Closing the game and deleting savefile. Press *Enter*.");
             Console.ReadLine();
             return false;
         }
