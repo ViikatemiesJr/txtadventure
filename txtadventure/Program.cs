@@ -1476,7 +1476,9 @@ namespace txtadventure
                                                     {
                                                         if (specific >= 50)
                                                         {
-
+                                                            int statRnd = rnd.Next(2, 6);
+                                                            rawChar[statRnd] += 1;
+                                                            Console.WriteLine("  It tasted like it had some voxor ore, and maybe some milk?");
                                                         }// gain stats
                                                         else if (specific >= 37 && category < 50)
                                                         {
@@ -1484,7 +1486,7 @@ namespace txtadventure
                                                         }// gain a lot of money
                                                         else if (specific >= 25 && category < 37)
                                                         {
-
+                                                            
                                                         }// gain mountain info
                                                         else
                                                         {
