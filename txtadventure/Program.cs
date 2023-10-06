@@ -1,10 +1,11 @@
 ﻿using System;//
 using System.Collections.Generic;//
-using System.Diagnostics.Eventing.Reader;
 using System.IO;//
 using System.Linq;//
+using System.Security.Cryptography;
 using System.Text;//
 using System.Threading.Tasks;//
+using System.Xml.Schema;
 
 namespace txtadventure
 {
@@ -113,7 +114,7 @@ namespace txtadventure
          *      0 = Rabbits Foot (0/1)
          *      1 = Major STD (-1/0/1) {-1 active (old endurance), 0 no, 1 hidden(day caught)} activate if "day caught" + 2 == "current day"
          *      2 = Karma ( 0 -+ any)
-         *      3 = Wanted (0 ->) {0-25 = no, 25-99 = fine, 100-499 = jail, 500 = death penalty}
+         *      3 = Bounty (0 ->) {0-25 = no, 25-99 = fine, 100-499 = jail, 500 = death penalty}
          *      4 = Drunk (0/1->) // alc = +str +2 cha - agi
          *      5 = Pregnant (-1/0->90) {-1 na, 0-5 none, 6-30 minor, 31-60 medium, 61-85 major, 86-90 extreme}
          *      6 = Hungry (0 ->) {days since last meal}
@@ -125,12 +126,26 @@ namespace txtadventure
          *      12 = Horse exhaustion (0->3) {return 1 for 3h sleep, 3 for hay; if @ 3 = negates horse speed buff}
          *      13 = Hungry baby (0 ->) {days since last meal}
          *      14 = pregnancy speed modifier (1->5) {na/none = 1, minor = 2, medium = 3, major = 4, extreme = 5}
+         *      15 = traumatized (0/1/2) {0 = none, 1 = rape, 2 = slavery}
+         *      16 = victim (0/ value)
+         */
+        /* Karma system notes:
+         *      Text mentions of gods and devils (M/F):
+         *          Ehphine The Goddess of Life (F)
+         *          ArchDevil Zinath (F)
+         *      Divine Interventions:
+         *          Save from death, tp to monastery @ >= 200; -= 175; (Ehphine The Goddess of Life)
+         *      Gain:
+         *          wildpot +75, 
+         *      Lose:
+         *          wildpot -75, 
          */
         /* Things to Add later:
          *      Skipped due to lack of mechanics or came in mind when doing smt else
          *      
-         *      Drunken sex @ openInventor(), case 2, case 7
+         *      Drunken sex to getBlackoutDrunk
          *      Drunken abortion
+         *      abort for genderchange
          *      inventory wild potion @ openInventory, case 2, case 8
          */
         // File Handling
@@ -217,7 +232,7 @@ namespace txtadventure
             {
                 int rivit = 35; // väh isoin location id + 1
                 int[] temp = new int[rivit];
-                int[] status = { 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+                int[] status = { 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
                 string[] template = new string[rivit];
                 for (int i = 0; i < template.Length; i++)
                     template[i] = Convert.ToString(temp[i]);                
@@ -914,7 +929,10 @@ namespace txtadventure
                     "\n  8 to 'Reset' any 'Location'" +
                     "\n  9 to edit some 'Status effects'" +
                     "\n  10 to gain, lose or set 'Karma'" +
-                    "\n  11 to gain, lose or set 'Bounty'");
+                    "\n  11 to gain, lose or set 'Bounty'" +
+                    "\n  12 to set Trauma level" +
+                    "\n  13 to set Victim value" +
+                    "\n  00 to print Numbers.");
                 string val = Console.ReadLine();
                 Console.Clear();
                 printHUD(rawChar, inventory, timeLocat);
@@ -1315,6 +1333,35 @@ namespace txtadventure
                         }
                         catch { txt = "Invalid number."; }
                         break;// Bounty
+                    case "12":
+                        try
+                        {
+                            string[] traumaTxt = { "'None'", "'Slavery'", "'Raped'" };
+                            Console.WriteLine("  What level of Trauma you want to set? Your current Trauma is " + traumaTxt[status[15]] +
+                                "\n  0 for 'None', 1 for 'Raped', 2 for 'Slavery'");
+                            int trauma = int.Parse(Console.ReadLine());
+                            if (trauma < 0 || trauma > 2) txt = "Invalid number.";
+                            else { status[15] = trauma; txt = "  Your trauma level was set as " + traumaTxt[status[15]]; }
+                        }
+                        catch { txt = "Invalid number."; }
+                        break;// Trauma
+                    case "13":
+                        try
+                        {
+                            Console.WriteLine("  What level of Victim Value you want to set? Your current victim value is " + status[16] + " Gold.");
+                            int vic = int.Parse(Console.ReadLine());
+                            if (vic < 0) vic = 0;
+                            status[16] = vic;
+                            txt = "  Your Victim Value was set as " + status[16] + " Gold.";
+                        }
+                        catch { txt = "Invalid number."; }
+                        break;// Victim
+                    case "00":
+                        Console.WriteLine("  timeLocat\n  time {0}, location {1}, day {2}\n", timeLocat[0], timeLocat[1], timeLocat[2]);
+                        Console.WriteLine("  status\n  rabbit {0}, std {1}, karma {2}, bounty {3}, drunk {4}, preg {5}, hungry {6}, hangover {7},", status[0], status[1], status[2], status[3], status[4], status[5], status[6], status[7]);
+                        Console.WriteLine("  skillup {0}, upskill {1}, sexorthreat {2}, mtinfo {3}, horsexha {4}, hungrybaby {5}, pregspeedmod {6},", status[8], status[9], status[10], status[11], status[12], status[13], status[14]);
+                        Console.WriteLine("  trauma {0}, victim {1}", status[15], status[16]);
+                        break;// Numbers
                     default:
                         txt = "Invalid number.";
                         break;
@@ -1400,25 +1447,35 @@ namespace txtadventure
                                         switch (itemId)
                                         {
                                             case 5:
-                                                infoTxt = "  Feeding '" + getItemTxtWithJustId(itemId) + "' will consume ration from your inventory. One ration is enough to feed all babies you have.";
-                                                if (useItemConfirm(infoTxt) == true)
+                                                infoTxt = "  Feeding '" + getItemTxtWithJustId(itemId) + "' will consume ration from your inventory. One ration is enough to feed all babies you have.\n  Last time you fed them was during day " + status[13];
+                                                if (status[13] > timeLocat[2]) Console.WriteLine("  Since you'v managed to overfeed, you feel like it's better not to feed them.");
+                                                else if (status[13] == timeLocat[2]) Console.WriteLine("  You'v already fed them today, so you feel like it's better not to feed them today.");
+                                                else
                                                 {
-                                                    bool rationIs = false; int i;
-                                                    for (i = 4; i > 12; i++)
+                                                    if (useItemConfirm(infoTxt) == true)
                                                     {
-                                                        if (inventory[i] == 6) { rationIs = true; break; }
+                                                        bool rationIs = false; int i;
+                                                        for (i = 4; i > 12; i++)
+                                                        {
+                                                            if (inventory[i] == 6) { rationIs = true; break; }
+                                                        }
+                                                        if (rationIs == false) { Console.WriteLine("  You can't feed your baby since you don't have any rations."); }
+                                                        else { Console.WriteLine("  You have fed your babies one of your rations."); inventory[i] = 0; }
+                                                        //inventory[] = 0;
                                                     }
-                                                    if (rationIs == false) { Console.WriteLine("  You can't feed your baby since you don't have any rations."); }
-                                                    else { Console.WriteLine("  You have fed your babies one of your rations."); inventory[i] = 0; }
-                                                    //inventory[] = 0;
                                                 }
                                                 break;// baby
                                             case 6:
-                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. This will satiate your hunger.";
-                                                if (useItemConfirm(infoTxt) == true)
+                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. This will satiate your hunger. Last time you ate was during day " + status[6];
+                                                if (status[6] > timeLocat[2]) Console.WriteLine("  Since you'v managed to overeat, you don't feel like eating this.");
+                                                else if (status[6] == timeLocat[2]) Console.WriteLine("  You'v already eaten today, so you don't feel like eating this.");
+                                                else
                                                 {
-                                                    inventory[itemId] = 0; status[6] = timeLocat[2];
-                                                    Console.WriteLine("  You feel full after eating ration.");
+                                                    if (useItemConfirm(infoTxt) == true)
+                                                    {
+                                                        inventory[itemId] = 0; status[6] = timeLocat[2];
+                                                        Console.WriteLine("  You feel full after eating ration.");
+                                                    }
                                                 }
                                                 break;// ration
                                             case 7:
@@ -1431,37 +1488,7 @@ namespace txtadventure
                                                     if (hangover == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; Console.WriteLine("  You forget your hangover quite quickly after another brew."); }
                                                     if (drunk == 0) { status[4] = 1; rawChar[2] += 1; rawChar[3] -= 1; rawChar[4] += 2; Console.WriteLine("  You feel drunk, strong and charismatic."); }
                                                     else if (drunk > 0 && drunk <= 5) { status[4] = drunk++; Console.WriteLine(" You drank another beer but it feels like it didn't do anything."); }
-                                                    else if (drunk > 5)
-                                                    {
-                                                        int rahaKadotus = rnd.Next(0, 250 - rawChar[6] * 30);
-                                                        int itemKadotusTod = rnd.Next(0, 125 - rawChar[6] * 10);
-                                                        int itemKadotus = rnd.Next(3, 12);
-                                                        if (rahaKadotus < inventory[0] && rahaKadotus > 0) inventory[0] -= rahaKadotus;
-                                                        else if (rahaKadotus > inventory[0]) inventory[0] = 0;
-                                                        if (itemKadotusTod >= 50) inventory[itemKadotus] = 0;
-                                                        if (timeLocat[1] >= 5 && timeLocat[1] <= 14)// Fel Fain
-                                                        {
-                                                            int teleport = rnd.Next(0, 12);
-                                                            if (teleport == 8) teleport = 13;
-                                                            else if (teleport == 10) teleport = 14;
-                                                            timeLocat[1] = teleport;
-                                                        }
-                                                        else if (timeLocat[1] >= 15 && timeLocat[1] <= 28)// Fel Mara
-                                                        {
-                                                            int teleport = rnd.Next(15, 25);
-                                                            if (teleport == 17) teleport = 26;
-                                                            else if (teleport == 19) teleport = 27;
-                                                            else if (teleport == 20) teleport = 28;
-                                                            timeLocat[1] = teleport;
-                                                        }
-                                                        else
-                                                        {
-                                                            int teleport = rnd.Next(29, 33);
-                                                            timeLocat[1] = teleport;
-                                                        }
-                                                        updateTimeAndReturnTxt(timeLocat, 1080, rawChar, inventory);
-                                                        Console.WriteLine("  Your memory goes blank and you wake up from a random place. You have no recollection of what you might have done.");
-                                                    }
+                                                    else if (drunk > 5) getBlackoutDrunk(rawChar, inventory, timeLocat);
                                                 }
                                                 break;// beer
                                             case 8:
@@ -1472,7 +1499,7 @@ namespace txtadventure
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
                                                     int category = rnd.Next(-30 + rawChar[6] * 10, 70 + rawChar[6] * 10); int specific = rnd.Next(1, 100);
-                                                    if (category >= 80)
+                                                    if (category >= 90)
                                                     {
                                                         if (specific >= 50)
                                                         {
@@ -1482,91 +1509,265 @@ namespace txtadventure
                                                         }// gain stats
                                                         else if (specific >= 37 && category < 50)
                                                         {
-
+                                                            inventory[0] += rnd.Next(250,300);
+                                                            updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory);
+                                                            Console.WriteLine("  Just after you finished drinking the potion, you notice that the empty vial has turned into small pile of Gold coins." +
+                                                                "\n  So then you try touching something else and it too turns into Gold. After a brief period of making some profit the effect ends.");
                                                         }// gain a lot of money
                                                         else if (specific >= 25 && category < 37)
                                                         {
-                                                            
-                                                        }// gain mountain info
+                                                            if (status[11] == 1)
+                                                            {
+                                                                inventory[0] += rnd.Next(250, 300);
+                                                                updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory);
+                                                                Console.WriteLine("  Just after you finished drinking the potion, you notice that the empty vial has turned into small pile of Gold coins." +
+                                                                    "\n  So then you try touching something else and it too turns into Gold. After a brief period of making some profit the effect ends.");
+                                                            }
+                                                            else
+                                                            {
+                                                                status[11] = 1;
+                                                                Console.WriteLine("  For a brief moment you become clairvoyant and see that the treasure you are looking for is hidden somewhere in the mountains," +
+                                                                    "\n  and to get there you need to take the path leading to mountains from the road between Fel Fain and Fel Mara.");
+                                                            }
+                                                        }// gain mountain info or lot of money
                                                         else
                                                         {
-
-                                                        }// a lot of food for all
+                                                            bool baby = checkIfHasItem(inventory, 5); status[6] = timeLocat[2] + 30;
+                                                            Console.WriteLine("  It tasted like a exquisite beer, but it was way thicker and more mellow than one. Also disapointingly this one had no alcohol, or atleast that's how it felt.");
+                                                            if (inventory[2] == 1 && baby == true) 
+                                                            { 
+                                                                Console.WriteLine("  After drinking most of this, you feel so full that you'll probably don't need to eat for the next 30 days." +
+                                                                    "\n  Since you couldn't drink it all, you decide to give leftovers to your baby/babies and to your horse." +
+                                                                    "\n  Your baby/babies don't need to be fed for the next 30 days, and your horse's exhaustion has gone down to 0.");
+                                                                status[13] = timeLocat[2] + 30;
+                                                                status[12] = 0;
+                                                            }
+                                                            else if (inventory[2] == 0 && baby == true)
+                                                            {
+                                                                Console.WriteLine("  After drinking most of this, you feel so full that you'll probably don't need to eat for the next 30 days." +
+                                                                    "\n  Since you couldn't drink it all, you decide to give leftovers to your baby/babies." +
+                                                                    "\n  Your baby/babies don't need to be fed for the next 30 days.");
+                                                                status[13] = timeLocat[2] + 30;
+                                                            }
+                                                            else if (inventory[2] == 1 && baby == false)
+                                                            {
+                                                                Console.WriteLine("  After drinking most of this, you feel so full that you'll probably don't need to eat for the next 30 days." +
+                                                                    "\n  Since you couldn't drink it all, you decide to give leftovers to your horse." +
+                                                                    "\n  Your horse's exhaustion has gone down to 0.");
+                                                                status[12] = 0;
+                                                            }
+                                                            else Console.WriteLine("  After drinking this, you feel so full that you'll probably don't need to eat for the next 30 days.");
+                                                        }// a lot of food for all4
                                                     }// Very Good // gain stats, gain a lot of money, gain mountain info, a lot food for all
-                                                    else if(category >= 60 && category < 80)
+                                                    else if(category >= 60 && category < 90)
                                                     {
                                                         if (specific >= 75)
                                                         {
-
+                                                            inventory[0] += rnd.Next(25, 100);
+                                                            Console.WriteLine("  You drank suspiciously yellow liquid and it tasted quite metallic, and then you vomited. Though what came up wasn't food." +
+                                                                "\n  It was some Gold coins. Somehow the liquid had solidified as Gold after ingesting it.");
                                                         }// gain money
                                                         else if (specific >= 50 && category < 75)
                                                         {
-
+                                                            status[2] += 75;
+                                                            Console.WriteLine("  It tasted like water, and then you notice it. Somebody had messed up and put marked cork upside down to this bottle." +
+                                                                "\n  It was probably just some Blessed Water.");
                                                         }// gain karma
                                                         else if (specific >= 25 && category < 50)
                                                         {
-
-                                                        }// lose bounty
+                                                            if (status[3] > 0)
+                                                            {
+                                                                status[3] -= 75;
+                                                                Console.WriteLine("  After drinking this you suddenly have weird feeling that somebody might have forgotten something you did.");
+                                                            }
+                                                            else
+                                                            {
+                                                                status[2] += 75;
+                                                                Console.WriteLine("  It tasted like water, and then you notice it. Somebody had messed up and put marked cork upside down to this bottle." +
+                                                                    "\n  It was probably just some Blessed Water.");
+                                                            }
+                                                        }// lose bounty or gain karma
                                                         else
                                                         {
-
-                                                        }// food for all
-                                                    }// Good // gain money, gain karma, lose bounty, food for all
+                                                            if (status[10] != 0)
+                                                            {
+                                                                status[10] = 0;
+                                                                if (rawChar[0] == 1)
+                                                                {
+                                                                    Console.WriteLine("  This felt quite fresh, and now you too feel quite younger, atleast in someways." +
+                                                                    "\n  It's almost like your body didn't experience some stuff, and in someways you have forgotten memory of it too.");
+                                                                    if (status[16] > 0) Console.WriteLine("  Though subconciusly you are is still traumatized.");
+                                                                }
+                                                                else Console.WriteLine("  This felt quite fresh, though you'r not quite sure what it did. But it feels like it did something.");
+                                                            }
+                                                            else
+                                                            {
+                                                                inventory[0] += rnd.Next(25, 100);
+                                                                Console.WriteLine("  You drank suspiciously yellow liquid and it tasted quite metallic, and then you vomited. Though what came up wasn't food." +
+                                                                    "\n  It was some Gold coins. Somehow the liquid had solidified as Gold after ingesting it.");
+                                                            }
+                                                        }// reset sex/ threats or gain money
+                                                    }// Good // gain money, gain karma, lose bounty, reset sex/ threats
                                                     else if (category >= 40 && category < 60)
                                                     {
                                                         if (specific >= 72)
                                                         {
-
+                                                            changeGenderEvent(rawChar, inventory, timeLocat);
+                                                            string[] gender = { "man.", "woman." };
+                                                            Console.WriteLine("  Well it seems like you now have 2 choices, either you keep chuging these wild potions until this effect is reversed," +
+                                                                "\n  or you'll just have to learn to live as a " + gender[rawChar[0]]);
                                                         }// change gender
                                                         else if (specific >= 44 && category < 72)
                                                         {
-
+                                                            int start = timeLocat[1];
+                                                            while (true)
+                                                            {
+                                                                timeLocat[1] = rnd.Next(5, 33);
+                                                                if (timeLocat[1] != start) break;
+                                                            }
+                                                            Console.WriteLine("  After drinking this potion you see blinding white flash and it turns out you have changed location.");
                                                         }// teleport
                                                         else if (specific >= 28 && category < 44)
                                                         {
-
+                                                            int first; int second; int temp;
+                                                            while (true)
+                                                            {
+                                                                first = rnd.Next(2, 6);
+                                                                if (first == 5 && rawChar[5] == 0) continue;
+                                                                else break;
+                                                            }
+                                                            while (true)
+                                                            {
+                                                                second = rnd.Next(2,6);
+                                                                if (second == 5 && rawChar[5] == 0) continue;
+                                                                if (second != first) break;
+                                                            }                                                            
+                                                            temp = rawChar[first]; rawChar[first] = rawChar[second]; rawChar[second] = temp;
+                                                            if (first == 5 || second == 5)
+                                                            {
+                                                                if (rawChar[5] <= 0) inventory[1] = 1;
+                                                                else if (rawChar[5] * 2 < inventory[1]) inventory[1] = rawChar[5] * 2;
+                                                            }
+                                                            Console.WriteLine("  Soon after finishing this potion, you feel sharp and strong but short lived pain. " +
+                                                                "\n It felt like your body was torn apart and put back together in an instant, though you feel like something changed.");
                                                         }// reverse stat
                                                         else
                                                         {
-
-                                                        }// get drunk
-                                                    }// Neutral // Change gender, teleport, reverse stat, get drunk
+                                                            bool wasDrunk = false;
+                                                            if (status[4] > 0) { status[4] = 0; rawChar[2] -= 1; rawChar[3] += 1; rawChar[4] -= 2; wasDrunk = true; }
+                                                            if (status[7] != 1) 
+                                                            {
+                                                                status[7] = 1; rawChar[2] -= 1; rawChar[3] -= 1; rawChar[4] -= 1;
+                                                                if (wasDrunk == true) Console.WriteLine("  You'r not sure what that piss tasting drink was, but it immediatelly killed your buzz from alcohol." +
+                                                                    "\n  It also caused you to get your hangover a bit earlier.");
+                                                                else Console.WriteLine("  You'r not sure what that piss tasting drink was, but it caused you to get instant hangover.");
+                                                            }
+                                                            else
+                                                            {
+                                                                status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1;
+                                                                status[4] = 4; rawChar[2] += 1; rawChar[3] -= 1; rawChar[4] += 2;
+                                                                Console.WriteLine("  It tasted like a quality beer, you can also taste that it's significantly stronger than your regular beer.");
+                                                            }
+                                                        }// get hangover (lose beer buff if active, if hangover then acts as a beer)
+                                                    }// Neutral // Change gender, teleport, reverse stat, get hangover or beer
                                                     else if (category >= 20 && category < 40)
                                                     {
                                                         if (specific >= 75)
                                                         {
-
+                                                            inventory[1] -= 1;
+                                                            Console.WriteLine("  What ever it was supposed to be, it tasted horible. Maybe it was spoiled.");
+                                                            if (inventory[1] <= 0) looseHpCheckForPots(inventory, rawChar, timeLocat);
+                                                            if (inventory[1] <= 0) deathHandler("Spoiled 'Wild Potion'");
                                                         }// lose hp
                                                         else if (specific >= 50 && category < 75)
                                                         {
-
+                                                            status[2] -= 75;
+                                                            Console.WriteLine("  That potion tasted like it was made by the The ArchDevil Zinath, It's a taste that's tough to forget but you wish you could.");
                                                         }// lose karma
                                                         else if (specific >= 25 && category < 50)
                                                         {
-
-                                                        }// get bounty
+                                                            if (timeLocat[1] <= 28)
+                                                            {
+                                                                status[3] += 75;
+                                                                Console.WriteLine("  It was really spicy, so spicy that you get irresistible temptation to undress and run around." +
+                                                                "\n  Sadly public nudity alone is minor offense punishable by a fine of 75 Gold, and you were unlucky to have witnesses of your act.");                                                                
+                                                            }
+                                                            else
+                                                            {
+                                                                int tot = 0; int[,] pots = { { 0, 0, 0, 0, 0, 0, 0, 0 }, { 7, 8, 9, 10, 14, 15, 16, 17 } };
+                                                                for (int i = 4; i <= 12; i++)
+                                                                {
+                                                                    if (inventory[i] == pots[1, 0]) { pots[0, 0]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 1]) { pots[0, 1]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 2]) { pots[0, 2]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 3]) { pots[0, 3]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 4]) { pots[0, 4]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 5]) { pots[0, 5]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 6]) { pots[0, 6]++; tot++; continue; }
+                                                                    if (inventory[i] == pots[1, 7]) { pots[0, 7]++; tot++; continue; }
+                                                                }
+                                                                if (tot > 0)
+                                                                {
+                                                                    int rng = rnd.Next(tot); int tot2 = 0; int consume =-1;
+                                                                    for (int i = 0; i < 8; i++)
+                                                                    {
+                                                                        tot2 += pots[0, i];
+                                                                        if (tot2 >= rng) { consume = pots[1, i] ; break; }
+                                                                    }
+                                                                    for (int i = 4; i <= 12; i++)
+                                                                    {
+                                                                        if (inventory[i] == consume) { inventory[i] = 0; break; }
+                                                                    }
+                                                                    Console.WriteLine("  It was really spicy, so you had to quench your burning mouth with anything your hands could reach quickly." +
+                                                                        "\n  Good thing that what ever you took was enough to relieve your mouth, but sadly this spicy potion also cancelled the effects of your own potion.");
+                                                                }
+                                                                else 
+                                                                {
+                                                                    updateTimeAndReturnTxt(timeLocat, rnd.Next(5760, 7200),rawChar,inventory);
+                                                                    Console.WriteLine("  It was really spicy and you passedout from the pain cause by your burning mouth." +
+                                                                        "\n  After gaining your conciousness back you estimate that you were outcold for multiple days.");
+                                                                }
+                                                            }
+                                                        }// get bounty/drinkpot/passout
                                                         else
                                                         {
-
-                                                        }// get hangover (lose beer buff if active)
-                                                    }// Bad // lose hp, lose karma, get bounty, get hangover
+                                                            Console.WriteLine("  You can taste the strong alcohol from this cocktail and then,...");
+                                                            getBlackoutDrunk(rawChar, inventory, timeLocat);
+                                                        }// get blackOutDrunk
+                                                    }// Bad // lose hp, lose karma, get bounty, get blackOutDrunk
                                                     else
                                                     {
                                                         if (specific >= 75)
                                                         {
-
+                                                            int statRnd = rnd.Next(2, 6);
+                                                            rawChar[statRnd] -= 1;
+                                                            Console.WriteLine("  At first it tastes like subpar beer, but soon after drinking it you realize that it was poisoned and it alterated your body slightly.");
                                                         }// lose stats
                                                         else if (specific >= 50 && category < 75)
                                                         {
-
+                                                            status[1] = timeLocat[2];
+                                                            Console.WriteLine("  It tastes a lot like blood. Maybe it was just blood, hopefully it wasn't dirty.");
                                                         }// get std
                                                         else if (specific >= 25 && category < 50)
                                                         {
-
+                                                            if (rawChar[0] == 1 && status[5] == -1)
+                                                            {
+                                                                status[5] = timeLocat[2];
+                                                                Console.WriteLine("  It tasted weird and slimy. You'r not sure, but it might have kick started some hormone production.");
+                                                            }
+                                                            else
+                                                            {
+                                                                status[3] += 400;
+                                                                Console.WriteLine("  It tasted weird and slimy. As the potion settles in, you fall into psychosis." +
+                                                                    "\n  As you regain control, you notice how passerbys flee in horror. And you'r pretty sure you should try to forget that episode.");
+                                                            }
                                                         }// get pregnant or gain a lot of bounty
                                                         else
                                                         {
-
+                                                            inventory[1] -= 4;
+                                                            Console.WriteLine("  This potion was quite potent poison, but you didn't realize it from the taste since it tasted quite sweet and it was actually really tasty.");
+                                                            if (inventory[1] <= 0) looseHpCheckForPots(inventory, rawChar, timeLocat);
+                                                            if (inventory[1] <= 0) deathHandler("Poisoned 'Wild Potion'");
                                                         }// lose a lot hp
                                                     }// Very Bad // lose stats, get std, get pregnant, lose a lot hp
                                                 }
@@ -2056,7 +2257,7 @@ namespace txtadventure
                     break;
                 }                
             }
-            if (karma >= 100) 
+            if (karma >= 200) 
             {
                 inventory[1] = rawChar[5] * 2; timeLocat[1] = 24;
                 if (inventory[1] <= 0) inventory[1] = 1;
@@ -2065,9 +2266,17 @@ namespace txtadventure
                     "\n  After that you wake up kneeling infront of Fel Mara's monastery's altar." +
                     "\n  You ain't sure if it's just a dream since all the mortal pain from your wounds along the wounds themselves are gone," +
                     "\n  but some monks and nuns that rushed to greet you claim it was divine intervention from Ehphine The Goddess of Life.");
-                karma -= 75; writeSlotToSVFile(3, 2, karma);
+                karma -= 175; writeSlotToSVFile(3, 2, karma);
             }
             return inventory[1];
+        }
+        static bool checkIfHasItem(int[] inventory, int itemId)
+        {
+            for (int i = 4; i <= 12; i++)
+            {
+                if (inventory[i] == itemId) return true;
+            }
+            return false;
         }
         // Event Handler Subs
         static int[] locationChoices(int location, int[] rawChar, int igTime)
@@ -2200,6 +2409,58 @@ namespace txtadventure
             else if (room == false) { Console.WriteLine("  Full on non-discardable items. Press *Enter* to continue."); Console.ReadLine(); }
             else { Console.WriteLine("  You don't have enough Gold to buy this. Press *Enter* to continue."); Console.ReadLine(); }
             return success;
+        }
+        static void changeGenderEvent(int[] rawChar, int[] inventory, int[] timeLocat)
+        {
+            int[] status = readLineFromSVFileForEvent(3);
+            if (rawChar[0] == 0) rawChar[0] = 1;
+            else rawChar[0] = 0;
+            status[10] = 0;
+            updateTimeAndReturnTxt(timeLocat, 600, rawChar, inventory);
+            Console.WriteLine("  After drinking the whole potion, you feel sleepy and pass out. When you wake up, something doesn't feel right.");
+            if (rawChar[0] == 1) Console.WriteLine("  First you notice how your chest now has 2 bumps, and then you realize that something is missing between your legs." +
+                "\n  and as you rise up, you notice how your hair has grown significantly longer.");
+            else Console.WriteLine("  First you notice how your chest has turned flat, and then how there is something between your legs that wasn't there earlier." +
+                "\n  and as you rise up, you notice how your hair is now significantly shorter.");
+            if (status[5] != -1) ;//ADD ABORT
+            if (status[3] != 0) { Console.WriteLine("  Well probably the only good thing is that guards won't recognize you."); status[3] = 0; }
+            writeLineToSVFile(status, 3);
+        }
+        static void getBlackoutDrunk(int[] rawChar, int[] inventory, int[] timeLocat)
+        {
+            Random rnd = new Random(); int[] status = readLineFromSVFileForEvent(3);
+            int rahaKadotus = rnd.Next(0, 250 - rawChar[6] * 30);
+            int itemKadotusTod = rnd.Next(0, 125 - rawChar[6] * 10);
+            int itemKadotus = rnd.Next(3, 12);
+            if (rahaKadotus < inventory[0] && rahaKadotus > 0) inventory[0] -= rahaKadotus;
+            else if (rahaKadotus > inventory[0]) inventory[0] = 0;
+            if (itemKadotusTod >= 50) inventory[itemKadotus] = 0;
+            if (timeLocat[1] >= 5 && timeLocat[1] <= 14)// Fel Fain
+            {
+                int teleport = rnd.Next(0, 12);
+                if (teleport == 8) teleport = 13;
+                else if (teleport == 10) teleport = 14;
+                timeLocat[1] = teleport;
+            }
+            else if (timeLocat[1] >= 15 && timeLocat[1] <= 28)// Fel Mara
+            {
+                int teleport = rnd.Next(15, 25);
+                if (teleport == 17) teleport = 26;
+                else if (teleport == 19) teleport = 27;
+                else if (teleport == 20) teleport = 28;
+                timeLocat[1] = teleport;
+            }
+            else
+            {
+                int teleport = rnd.Next(29, 33);
+                timeLocat[1] = teleport;
+            }
+            updateTimeAndReturnTxt(timeLocat, rnd.Next(720, 1440), rawChar, inventory);
+            if (timeLocat[0] > 1800) updateTimeAndReturnTxt(timeLocat, 360, rawChar, inventory);
+            if (status[4] != 0) { status[4] = 0; rawChar[2] -= 1; rawChar[3] += 1; rawChar[4] -= 2; } 
+            if (status[7] != 1) { status[7] = 1; rawChar[2] -= 1; rawChar[3] -= 1; rawChar[4] -= 1; }
+            Console.WriteLine("  Your memory goes blank and you wake up from a random place. You have no recollection of what you might have done.");
+            writeLineToSVFile(status, 3);
         }
         // Event Handler; Edit Location Subs
         static void locationDescriptions(int location)
