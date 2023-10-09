@@ -2,10 +2,8 @@
 using System.Collections.Generic;//
 using System.IO;//
 using System.Linq;//
-using System.Security.Cryptography;
 using System.Text;//
 using System.Threading.Tasks;//
-using System.Xml.Schema;
 
 namespace txtadventure
 {
@@ -32,29 +30,34 @@ namespace txtadventure
                 readSaveFile(rawChar, inventory, timeLocat);
             while (Quit)
             {
+                int bounty = readSlotFromSVFile(3, 3);
                 printHUD(rawChar, inventory, timeLocat);
-                locationDescriptions(timeLocat[1]);
-                valinta = valintaRak(timeLocat, rawChar, inventory); // Valinta indeksi
-                if (valinta == -1)
+                if (bounty >= 25) Quit = checkForGuards(rawChar, inventory, timeLocat);
+                if (Quit == false)
                 {
-                    Quit = false;
-                    writeSaveFile(rawChar, inventory, timeLocat);
-                }// Quit käsittely
-                else if (valinta == -2)
-                {
-                   Quit = openInventory(rawChar, inventory, timeLocat);
-                }// Inventory
-                else if (valinta == -3)
-                {
-                    Quit = openDebugMenu(rawChar, inventory, timeLocat);
-                }// Hidden DeBug Menu, open by inputting "tes"
-                else
-                {
-                    Console.Clear();
-                    printHUD(rawChar, inventory, timeLocat);
-                    Quit = eventHandler(rawChar, inventory, timeLocat, valinta);                    
-                    Console.Clear();
-                }// Events
+                    locationDescriptions(timeLocat[1]);
+                    valinta = valintaRak(timeLocat, rawChar, inventory); // Valinta indeksi
+                    if (valinta == -1)
+                    {
+                        Quit = false;
+                        writeSaveFile(rawChar, inventory, timeLocat);
+                    }// Quit käsittely
+                    else if (valinta == -2)
+                    {
+                        Quit = openInventory(rawChar, inventory, timeLocat);
+                    }// Inventory
+                    else if (valinta == -3)
+                    {
+                        Quit = openDebugMenu(rawChar, inventory, timeLocat);
+                    }// Hidden DeBug Menu, open by inputting "tes"
+                    else
+                    {
+                        Console.Clear();
+                        printHUD(rawChar, inventory, timeLocat);
+                        Quit = eventHandler(rawChar, inventory, timeLocat, valinta);
+                        Console.Clear();
+                    }// Events
+                }
                 if (Quit == false) writeSaveFile(rawChar, inventory, timeLocat);
             }
             File.Delete("C:\\temp\\txtadventure\\Weaps.txt");
@@ -114,7 +117,7 @@ namespace txtadventure
          *      0 = Rabbits Foot (0/1)
          *      1 = Major STD (-1/0/1) {-1 active (old endurance), 0 no, 1 hidden(day caught)} activate if "day caught" + 2 == "current day"
          *      2 = Karma ( 0 -+ any)
-         *      3 = Bounty (0 ->) {0-25 = no, 25-99 = fine, 100-499 = jail, 500 = death penalty}
+         *      3 = Bounty (0 ->) {0-24 = no, 25-99 = fine, 100-499 = jail, 500 = death penalty}
          *      4 = Drunk (0/1->) // alc = +str +2 cha - agi
          *      5 = Pregnant (-1/0->90) {-1 na, 0-5 none, 6-30 minor, 31-60 medium, 61-85 major, 86-90 extreme}
          *      6 = Hungry (0 ->) {days since last meal}
@@ -138,15 +141,12 @@ namespace txtadventure
          *      Gain:
          *          wildpot +75, 
          *      Lose:
-         *          wildpot -75, 
+         *          wildpot -75, malnutriAbort -500, blackoutAbort/fightAbort -100, std&sex -100, killed innocent/ guard -500,
          */
         /* Things to Add later:
          *      Skipped due to lack of mechanics or came in mind when doing smt else
          *      
-         *      Drunken sex to getBlackoutDrunk
-         *      Drunken abortion
-         *      abort for genderchange
-         *      inventory wild potion @ openInventory, case 2, case 8
+         *      
          */
         // File Handling
         static void winSize()
@@ -855,7 +855,7 @@ namespace txtadventure
                 else if (status[5] >= 86 && status[5] <= 90 && status[14] < 5)
                 {
                     Console.WriteLine("  As the birh draws closer, you are significantly slower and even smallest tasks seem like massive chores");
-                    rawChar[3] -= 3; rawChar[4] -= 1; // agi charisma
+                    rawChar[3] -= 3; rawChar[4] -= 1; // agi, charisma
                     status[14] = 5;
                 }// extreme
                 else if (status[5] >= 91)
@@ -876,7 +876,7 @@ namespace txtadventure
                     }// malnutrition check
                 }
                 if (malnutrition == false) status[5] += 1;
-                else { status[5] = 0; Console.WriteLine("  You caused abortion by malnutrition"); status[2] -= 500; }
+                else { status[5] = -1; Console.WriteLine("  You caused abortion by malnutrition"); status[2] -= 500; }
                 trigger = true;
             }// pregnancy
             if (status[8] + 2 >= timeLocat[2])
@@ -2201,6 +2201,230 @@ namespace txtadventure
             }
             return val;
         }
+        static bool checkForGuards(int[] rawChar, int[] inventory, int[] timeLocat)
+        {
+            if (timeLocat[1] == 6 || timeLocat[1] == 13 || timeLocat[1] == 14 || timeLocat[1] == 15 || timeLocat[1] == 26 || timeLocat[1] == 27 || timeLocat[1] == 28)
+            {
+                int[] status = readLineFromSVFileForEvent(3); int multiplyer; int nightBonus = 0;// 3 = Bounty(0->) { 0 - 24 = no, 25 - 99 = fine, 100 - 499 = jail, 500 = death penalty}
+                if (status[3] >= 25 && status[3] < 100) multiplyer = 1;
+                else if (status[3] >= 100 && status[3] < 250) multiplyer = 2;
+                else if (status[3] >= 250 && status[3] < 500) multiplyer = 3;
+                else if (status[3] >= 500) multiplyer = 5;
+                else multiplyer = 0;
+                if (timeLocat[0] >= 2000 || timeLocat[0] <= 0600) nightBonus = 25;
+                int luck = rawChar[6];
+                if (luck > 5) luck = 5;
+                else if (luck < 0) luck = 0;
+                int agi = rawChar[3];
+                if (agi > 5) agi = 5;
+                else if (agi < 0) agi = 0;
+                Random rnd = new Random(); int rng = rnd.Next(1, 100) * multiplyer - agi * 5 - luck * 5 + 30 - nightBonus;
+                if (rng >= 75)
+                {
+                    bool isHorse = false; bool cont = true; int val = 0; bool fled = false;
+                    if (multiplyer == 5) Console.WriteLine("  It looks like some guards have recognized you, and the hostile look on their faces looks like it'd be quite hard to talk your out of this situation.");
+                    else if (multiplyer == 2 || multiplyer == 3) Console.WriteLine("  It looks like some guards have recognized you, the look on their faces seems serious but not outright hostile.");
+                    else Console.WriteLine("  It looks like some guards have recognized you, but the look on their faces looks tells you that this'll be just a minor inconvenience if you'll have enough Gold.");
+                    if (inventory[2] == 1 && status[12] < 3) { isHorse = true; Console.WriteLine("  Do you face the guards (1), try to flee and loose the guards in the back alleys (2), or flee the town with your horse (3)?"); }
+                    else Console.WriteLine("  Do you face the guards (1) or try to flee and loose the guards in the back alleys (2)?");
+                    while (cont)
+                    {
+                        try
+                        {
+                            val = int.Parse(Console.ReadLine());
+                            if (isHorse == true)
+                            {
+                                if (val >= 1 && val <= 3) cont = false;
+                                else Console.WriteLine("Invalid number, please try again.");
+                            }
+                            else
+                            {
+                                if (val >= 1 && val <= 2) cont = false;
+                                else Console.WriteLine("Invalid number, please try again.");
+                            }
+                        }
+                        catch { Console.WriteLine("Invalid selection, please try again."); }
+                    }
+                    switch (val)
+                    {
+                        case 1:
+                            Console.WriteLine("  You prepare to face the guards.");
+                            break;
+                        case 2:
+                            rng = rnd.Next(1,100) * multiplyer - agi * 5 - luck * 5 + 30 - nightBonus;
+                            if (agi >= 2)
+                            {
+                                if (rng >= 75) fled = true;
+                            }
+                            if (fled == true) 
+                            { 
+                                updateTimeAndReturnTxt(timeLocat, 180, rawChar, inventory);
+                                if (timeLocat[1] > 14) timeLocat[1] = 25;
+                                else timeLocat[1] = 12;
+                                Console.WriteLine("  You managed to flee from guards and went lurking into the back alleys after a few hours of hiding you are ready to leave your hiding spot.");
+                            }
+                            else Console.WriteLine("  You failed to flee from the guards and are now forced to face them.");
+                            break;
+                        case 3:
+                            fled = true; updateTimeAndReturnTxt(timeLocat, 1440,rawChar,inventory); status[12] += 1;
+                            if (timeLocat[1] == 13 || timeLocat[1] == 14) timeLocat[1] = 6;
+                            else if (timeLocat[1] == 27 || timeLocat[1] == 28) timeLocat[1] = 15;
+                            Console.WriteLine("  You managed to flee from guards and spend whole day hiding in the outskirts. After full day, you manage to sneak back into the town.");
+                            if (status[12] >= 3) Console.WriteLine("  Your horse is completely exhausted. It needs rest or hay.");
+                            break;
+                    }          
+                    if (fled == false)
+                    {
+                        Console.WriteLine("  As the guards aproach you, they tell that you have racked up bounty of " + status[3] + " Gold, which means you have the following options.");
+                        if (multiplyer == 5) Console.WriteLine("  Resist arrest (1) or submit to slavery (2).");
+                        else if (multiplyer == 2 || multiplyer == 3) Console.WriteLine("  Resist arrest (1) or spend multiple days in prison (2).");
+                        else Console.WriteLine("  Resist arrest (1) or spend few days in prison (2) or pay up " + status[3] + " Gold (3). If you don't have enough gold, you'll end up in prison.");
+                    }
+                    cont = true;
+                    while (cont)
+                    {
+                        try
+                        {
+                            val = int.Parse(Console.ReadLine());
+                            if (multiplyer >= 2)
+                            {
+                                if (val >= 1 && val <= 2) cont = false;
+                                else Console.WriteLine("Invalid number, please try again.");
+                            }
+                            else
+                            {
+                                if (val >= 1 && val <= 3) cont = false;
+                                else Console.WriteLine("Invalid number, please try again.");
+                            }
+                        }
+                        catch { Console.WriteLine("Invalid selection, please try again."); }
+                    }
+                    if (val >= 2 && multiplyer != 5)
+                    {
+                        if (timeLocat[1] > 14) timeLocat[1] = 28;
+                        else timeLocat[1] = 14;
+                        for (int i = 4; i <= 12; i++)
+                        {
+                            if (inventory[i] == 10) { inventory[i] = 0; cont = true; }
+                            else if (inventory[i] == 11) { inventory[i] = 0; cont = true; }
+                            else if (inventory[i] == 18) { inventory[i] = 0; cont = true; }
+                        }
+                        if (cont == true) Console.WriteLine("  At the office you are searched and are forced to forfeit all illeagal items you had.");
+                    }
+                    cont = true;
+                    while (cont)
+                    {
+                        switch (val)
+                        {
+                            case 1:
+                                int result = fightHandler(rawChar, inventory, timeLocat, 150, 2);
+                                bool unconcius = false;
+                                if (result == 0) { deathHandler("Killed by Guards while resisting arrest"); return true; }
+                                if (result == 1)
+                                {
+                                    int[] wep = readLineFromWeps(inventory[2]);
+                                    if (wep[3] == 1)
+                                    {
+                                        rng = rnd.Next(0 + (luck + agi) * 5, 100 + (luck + agi) * 5);
+                                        if (rng >= 75) unconcius = true;
+                                    }
+                                    if (unconcius == true)
+                                    {
+                                        Console.WriteLine("  You managed to knock the guards unconcius, but soon there might be more of them.");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("  You managed to kill the guards that came after you, but soon there might be more of them.");
+                                        status[2] -= 500; status[3] += 500;
+                                    }
+                                    if (status[5] >= 6)
+                                    {
+                                        if (rnd.Next(-30 + (rawChar[5] + rawChar[6]) * 5, 70 + (rawChar[5] + rawChar[6]) * 5) <= 50){ abortion(rawChar, 100); Console.WriteLine("  Your pregnancy faced abortion due to heavy beating you took during the fight."); }
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("  You took heavy beating, and gave em' hell too. When it was clear you were about to meet your doom in this fight, you managed to escape.");
+                                    if (status[5] >= 6) { abortion(rawChar, 100); Console.WriteLine("  Your pregnancy faced abortion due to heavy beating you took during the fight."); }
+                                }
+                                cont = false;
+                                break;
+                            case 2:
+                                int days = 0;
+                                if (multiplyer != 5) days = status[3] / 3;
+                                else days = rng = rnd.Next(500, 1000);                                
+                                if (status[5] + days >= 90)
+                                {
+                                    abortion(rawChar, 0);
+                                    if (multiplyer != 5) Console.WriteLine("  You gave birth to a new baby during your imprisonment, and it was taken away from you and sent to nearest monastery to grow up.");
+                                    else Console.WriteLine("  As a slave you are not allowed to be pregnant so you are subjected abortion by violence.");
+                                }
+                                else if (status[5] >= 0)
+                                {
+                                    status[6] = timeLocat[2] + days;
+                                }
+                                if (checkIfHasItem(inventory, 5) == true)
+                                {
+                                    for (int i = 4; i <= 12; i++)
+                                    {
+                                        if (inventory[i] == 5) inventory[i] = 0;
+                                    }
+                                    Console.WriteLine("  You are parted from your baby/babies and they are sent to nearest monastery to grow up.");
+                                }
+                                if (multiplyer != 5) 
+                                {
+                                    int skillLoss = (status[3] + 1) / 100;
+                                    if (skillLoss <= 0) skillLoss = 1;
+                                    for (int i = 0; i < skillLoss; i++)
+                                    {
+                                        rng = rnd.Next(2,5);
+                                        rawChar[rng] -= 1;
+                                    }
+                                    Console.WriteLine("  You were " + days + " days imprisoned. During your imprisonment, you grew weaker.");
+                                }
+                                else
+                                {
+                                    Console.WriteLine("  As a slave you were not allowed to own anything so all your items are taken away.");
+                                    for (int i = 4; i <= 12; i++)
+                                    {
+                                        inventory[i] = 0;
+                                    }
+                                    if (rawChar[0] == 0)
+                                    {
+                                        rawChar[0] = 1; status[10] = 0;
+                                        Console.WriteLine("  Shortly after being enslaved you were force fed a slavers potion, since at the time there was no need for male slaves." +
+                                            "\n  This potion turned you into a female since those were easier to sell.");
+                                    }
+                                    inventory[0] = 0; inventory[2] = 0; inventory[3] = 0; status[15] = 2; status[10] += days; status[1] = 0; rawChar[2] = 0; rawChar[4] = 0; rawChar[5] = 1; inventory[1] = 2;
+                                    if (rawChar[3] < 5) rawChar[3] = 5;
+                                    Console.WriteLine("  You were sold to a questionable establishment as a toy." +
+                                        "\n  Being a slave for such extended period of time made you really weak and broke your mind. Since your holes were used daily, you were forced to drink cure potions every few days to keep you as a clean." +
+                                        "\n  Also everytime you were visibly pregnant you were forced into violent abortion. Only thing you didn't lose was your agility or luck." +
+                                        "\n  After countless days, the establishment was forced to closed due to reasons that weren't told to you, so you with your broken mind and body was let go. Once again you were free.");
+                                }
+                                status[3] = 0;
+                                updateTimeAndReturnTxt(timeLocat, days * 1440, rawChar, inventory);
+                                cont = false;
+                                break;
+                            case 3:
+                                if (inventory[0] >= status[3])
+                                {
+                                    inventory[0] -= status[3]; status[3] = 0; cont = false;
+                                    Console.WriteLine("  You pay up your fine and are free to leave.");
+                                }
+                                else { val = 2; Console.WriteLine("  At the office, you notice that you lack the required gold, and since you already forfeited your weapon until you pay up, you can only proceed to go to jail."); }
+                                break;
+                        }
+                    }                    
+                    writeSaveFile(rawChar, inventory, timeLocat);
+                    writeLineToSVFile(status, 3);
+                    Console.WriteLine("  Press *Enter* to continue.");
+                    Console.ReadLine();
+                    
+                }
+            }
+            return false;
+        }
         // Basic Subs
         static bool useItemConfirm(string infoTxt)
         {
@@ -2220,7 +2444,7 @@ namespace txtadventure
         static bool deathHandler(string causeOfDeathTxt)
         {
             File.Delete("C:\\temp\\txtadventure\\SVfile.txt");
-            Console.WriteLine("  You died, cause of death was " + causeOfDeathTxt + "\n\n  Closing the game and deleting savefile. Press *Enter*.");
+            Console.WriteLine("  You died, cause of death was '" + causeOfDeathTxt + "'\n\n  Closing the game and deleting savefile. Press *Enter*.");
             Console.ReadLine();
             return true;
         }
@@ -2277,6 +2501,47 @@ namespace txtadventure
                 if (inventory[i] == itemId) return true;
             }
             return false;
+        }
+        static void abortion(int[] rawChar, int karmaLoss)
+        {
+            int[] status = readLineFromSVFileForEvent(3);
+            if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
+            if (status[14] >= 4) rawChar[3] += 1;
+            if (status[14] >= 5) { rawChar[3] += 4; rawChar[4] += 1; }
+            status[14] = 1; status[5] = -1; status[2] -= karmaLoss;
+            writeLineToSVFile(status, 3);
+        }
+        static int fightHandler(int[] rawChar, int[] inventory, int[] timeLocat, int dmgReq, int dmgTaken)
+        {
+            // return; 0 = dead, 1 = win, 2 = flee,
+            int[] wep = readLineFromWeps(inventory[2]);
+            int str = rawChar[2]; int strReq = wep[2]; int dmg = wep[0]; int dmgDone = 0; int luck = rawChar[6] + 1; int agi = rawChar[3];
+            Random rnd = new Random(); int rng;
+            if (agi <= 0) agi = 0;
+            else if (agi >= 5) agi = 5;
+            luck /= 2;
+            if (luck >= 3) luck = 3;
+            int fight = str * dmg * luck; // 30 if vogger, 3 str, 3 luck 
+            int hploss; 
+            while (true)
+            {
+                rng = rnd.Next(20 - (luck + agi * 2) * 5 ,140 - (luck + agi * 2) * 5);
+                if (rng <= 0) rng = 0;
+                else if (rng <= 33) rng = 1;
+                else if (rng <= 75) rng = 2;
+                else rng = 3;
+                hploss = dmgTaken * rng;
+                inventory[1] -= hploss;
+                if (inventory[1] <= 0) looseHpCheckForPots(inventory, rawChar, timeLocat);
+                if (inventory[1] <= 0) 
+                {
+                    rng = rnd.Next(20 - (luck + agi * 2) * 5, 140 - (luck + agi * 2) * 5);
+                    if (rng >= 33) return 0;
+                    else { inventory[1] = 1; return 2; }
+                }
+                dmgDone += fight;
+                if (dmgDone >= dmgReq) return 1;
+            }            
         }
         // Event Handler Subs
         static int[] locationChoices(int location, int[] rawChar, int igTime)
@@ -2422,7 +2687,7 @@ namespace txtadventure
                 "\n  and as you rise up, you notice how your hair has grown significantly longer.");
             else Console.WriteLine("  First you notice how your chest has turned flat, and then how there is something between your legs that wasn't there earlier." +
                 "\n  and as you rise up, you notice how your hair is now significantly shorter.");
-            if (status[5] != -1) ;//ADD ABORT
+            if (status[5] != -1) abortion(rawChar, 0);
             if (status[3] != 0) { Console.WriteLine("  Well probably the only good thing is that guards won't recognize you."); status[3] = 0; }
             writeLineToSVFile(status, 3);
         }
@@ -2454,12 +2719,198 @@ namespace txtadventure
             {
                 int teleport = rnd.Next(29, 33);
                 timeLocat[1] = teleport;
-            }
+            }            
             updateTimeAndReturnTxt(timeLocat, rnd.Next(720, 1440), rawChar, inventory);
             if (timeLocat[0] > 1800) updateTimeAndReturnTxt(timeLocat, 360, rawChar, inventory);
             if (status[4] != 0) { status[4] = 0; rawChar[2] -= 1; rawChar[3] += 1; rawChar[4] -= 2; } 
             if (status[7] != 1) { status[7] = 1; rawChar[2] -= 1; rawChar[3] -= 1; rawChar[4] -= 1; }
             Console.WriteLine("  Your memory goes blank and you wake up from a random place. You have no recollection of what you might have done.");
+            if (status[5] >= 6)
+            {
+                if (rnd.Next(0, 100) >= 80) { abortion(rawChar, 100); Console.WriteLine("  But judging by the blood between your legs, you have accidentaly caused abortion."); }
+            }
+            else
+            {
+                if (rnd.Next(0, 100 - rawChar[6] * 5) >= 70)
+                {
+                    if (status[1] == -1) status[2] -= 100;
+                    if (rawChar[0] == 0) 
+                    { 
+                        int rng = rnd.Next(0, 100 + rawChar[6] * 5);
+                        if (rng > 66)
+                        {
+                            inventory[0] -= 50;
+                            if (inventory[0] < 0) inventory[0] = 0;
+                        }
+                        else if (rng > 33) 
+                        { 
+                            if (status[1] != 0) status[1] = timeLocat[2];
+                            else
+                            {
+                                inventory[0] -= 50;
+                                if (inventory[0] < 0) inventory[0] = 0;
+                            }
+                        }
+                        else { status[3] += 100; status[10] += 1; }
+                        Console.WriteLine("  But judging by the sore lower muscles, you'v had some fun. Hopefully she was willing and clean."); 
+                    }
+                    else
+                    {
+                        status[10] += 1; int rng = rnd.Next(0, 100 + rawChar[6] * 5);
+                        if (rng > 66) inventory[0] += 50;
+                        else if (rng > 33)
+                        {
+                            if (status[1] != 0) status[1] = timeLocat[2];
+                            else inventory[0] += 50;
+                        }
+                        else
+                        {
+                            if (status[5] == 0) status[5] = timeLocat[2];
+                            else
+                            {
+                                if (status[1] != 0) status[1] = timeLocat[2];
+                                else inventory[0] += 50;
+                            }
+                        }
+                        Console.WriteLine("  But judging by the sticky substance between your legs, you'v had some fun. Hopefully he was clean.");
+                    }
+                }
+            }
+            writeLineToSVFile(status, 3);
+        }
+        static void seduction(int[] rawChar, int[] inventory, int[] timeLocat, bool sold, int riskFactor, int timeMulti)
+        {
+            int Chari = rawChar[4]; int luck = rawChar[6]; int endu = rawChar[5];
+            if (luck > 5) luck = 5;
+            else if (luck < 0) luck = 0;
+            if (endu > 5) endu = 5;
+            if (Chari <= 0) Chari = 1;
+            Random rnd = new Random(); int money = rnd.Next(Chari * 2, Chari * 6);
+            int[] status = readLineFromSVFileForEvent(3);
+            bool std = false; bool preg = false; int karmaloss = 0;           
+            if (status[10] == 0)
+            {
+                money *= 10;
+                switch (luck)
+                {
+                    case 0:
+                        if (rnd.Next(0, 100) >= 81) preg = true; 
+                        break;
+                    case 1:
+                        if (rnd.Next(0, 100) >= 86) preg = true;
+                        break;
+                    case 2:
+                        if (rnd.Next(0, 100) >= 91) preg = true;
+                        break;
+                    case 3:
+                        if (rnd.Next(0, 100) >= 96) preg = true;
+                        break;
+                    case 4:
+                        if (rnd.Next(0, 100) >= 101) preg = true;
+                        break;
+                    case 5:
+                        if (rnd.Next(0, 100) >= 101) preg = true;
+                        break;
+                }
+            }
+            else if (status[10] >= 1 && status[10] < 6)
+            {
+                money *= 5; karmaloss = 5;
+                if (rnd.Next(0 - luck * 5 - endu * 5, 100 * riskFactor - luck * 5 - endu * 5) >= 45) std = true;
+                switch (luck)
+                {
+                    case 0:
+                        if (rnd.Next(0, 100) >= 81) preg = true;
+                        break;
+                    case 1:
+                        if (rnd.Next(0, 100) >= 86) preg = true;
+                        break;
+                    case 2:
+                        if (rnd.Next(0, 100) >= 91) preg = true;
+                        break;
+                    case 3:
+                        if (rnd.Next(0, 100) >= 94) preg = true;
+                        break;
+                    case 4:
+                        if (rnd.Next(0, 100) >= 96) preg = true;
+                        break;
+                    case 5:
+                        if (rnd.Next(0, 100) >= 98) preg = true;
+                        break;
+                }
+            }
+            else if (status[10] >= 6 && status[10] < 15)
+            {
+                money *= 3; karmaloss = 25;
+                if (rnd.Next(0 - luck * 5 - endu * 5, 100 * riskFactor - luck * 5 - endu * 5) >= 20) std = true;
+                switch (luck)
+                {
+                    case 0:
+                        if (rnd.Next(0, 100) >= 76) preg = true;
+                        break;
+                    case 1:
+                        if (rnd.Next(0, 100) >= 81) preg = true;
+                        break;
+                    case 2:
+                        if (rnd.Next(0, 100) >= 86) preg = true;
+                        break;
+                    case 3:
+                        if (rnd.Next(0, 100) >= 91) preg = true;
+                        break;
+                    case 4:
+                        if (rnd.Next(0, 100) >= 94) preg = true;
+                        break;
+                    case 5:
+                        if (rnd.Next(0, 100) >= 96) preg = true;
+                        break;
+                }
+            }
+            else
+            {
+                money *= 2; karmaloss = 50;
+                if (rnd.Next(0 - luck * 5 - endu * 5, 100 * riskFactor - luck * 5 - endu * 5) >= -5) std = true;
+                switch (luck)
+                {
+                    case 0:
+                        if (rnd.Next(0, 100) >= 51) preg = true;
+                        break;
+                    case 1:
+                        if (rnd.Next(0, 100) >= 67) preg = true;
+                        break;
+                    case 2:
+                        if (rnd.Next(0, 100) >= 76) preg = true;
+                        break;
+                    case 3:
+                        if (rnd.Next(0, 100) >= 86) preg = true;
+                        break;
+                    case 4:
+                        if (rnd.Next(0, 100) >= 91) preg = true;
+                        break;
+                    case 5:
+                        if (rnd.Next(0, 100) >= 94) preg = true;
+                        break;
+                }
+            }
+            if (status[1] < 0)
+            {
+                if (money >= 50) karmaloss += money * 2;
+                else karmaloss += 100;
+            }                        
+            if (status[5] == -1 && preg == true) 
+            {
+                int babies = 0;
+                for (int i = 4; i <= 12; i++)
+                {
+                    if (inventory[i] == 5) babies++;
+                }
+                if (babies >= 8) babies = -1;
+                if (babies >= 0) status[5] = timeLocat[2]; 
+            }
+            if (sold == true) { inventory[0] += money; status[2] -= karmaloss; };
+            if (status[1] == 0 && std == true) status[1] = timeLocat[2];
+            status[10] += 1;
+            updateTimeAndReturnTxt(timeLocat, rnd.Next(60,120) * timeMulti, rawChar, inventory);
+            writeSaveFile(rawChar, inventory, timeLocat);            
             writeLineToSVFile(status, 3);
         }
         // Event Handler; Edit Location Subs
