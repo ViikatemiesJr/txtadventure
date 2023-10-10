@@ -12,7 +12,7 @@ namespace txtadventure
         static void Main(string[] args)
         {
             winSize(); checkDirectory(); prepareTempFiles();
-            int valinta; bool Quit = true;
+            int valinta; bool Quit = false;
             valinta = continueSavedGame();
             int[] rawChar = new int[7]; // 0 = Gender {0 male, 1 female}, 1 = Class {0 warrior, 1 rogue, 2 merchant}, 2 = #Str, 3 = #Agi, 4 = #Char, 5 = #Endu, 6 = #Luck
             int[] inventory = new int[13];
@@ -28,12 +28,12 @@ namespace txtadventure
             }// create new char
             else
                 readSaveFile(rawChar, inventory, timeLocat);
-            while (Quit)
+            while (!Quit)
             {
                 int bounty = readSlotFromSVFile(3, 3);
                 printHUD(rawChar, inventory, timeLocat);
                 if (bounty >= 25) Quit = checkForGuards(rawChar, inventory, timeLocat);
-                if (Quit == false)
+                if (!Quit)
                 {
                     locationDescriptions(timeLocat[1]);
                     valinta = valintaRak(timeLocat, rawChar, inventory); // Valinta indeksi
@@ -58,7 +58,7 @@ namespace txtadventure
                         Console.Clear();
                     }// Events
                 }
-                if (Quit == false) writeSaveFile(rawChar, inventory, timeLocat);
+                if (!Quit) writeSaveFile(rawChar, inventory, timeLocat);
             }
             File.Delete("C:\\temp\\txtadventure\\Weaps.txt");
             File.Delete("C:\\temp\\txtadventure\\Items.txt");
@@ -500,6 +500,36 @@ namespace txtadventure
             }
             return output;
         }
+        static int[] readLineFromSVFileForStatus()
+        {
+            int[] output = new int[17]; // if change, edit also locationDescriptions()
+            try
+            {
+                string[] lines = File.ReadAllLines("C:\\temp\\txtadventure\\SVfile.txt");
+                string line = lines[3];
+                int j = 0; string value; bool cont;
+                for (int i = 0; i < output.Length; i++)
+                {
+                    value = ""; cont = true;
+                    while (cont)
+                    {
+                        if (line[j] == '!')
+                        { output[i] = Convert.ToInt32(value); cont = false; }
+                        else if (line[j] == '-')
+                            value += "-";
+                        else
+                            value += Convert.ToString(line[j]);
+                        j++;
+                    }
+                }
+            }
+            catch
+            {
+                Console.WriteLine("ERROR: Unable to read line ID: 3 from ´SVFile.txt, press *Enter* to proceed, readLineFromSVFileForStatus()");
+                Console.ReadLine();
+            }
+            return output;
+        }
         static int[] readLineFromSVFileForEvent(int lineID)
         {
             int[] output = new int[5]; // if change, edit also locationDescriptions()
@@ -806,7 +836,7 @@ namespace txtadventure
         // Basic Funcs
         static void dailyChecks(int[] rawChar, int[] inventory, int[] timeLocat)
         {
-            int[] status = readLineFromSVFileForEvent(3); bool trigger = false;
+            int[] status = readLineFromSVFileForStatus(); bool trigger = false;
             if (status[1] > 0 && status[1] + 2 >= timeLocat[2])
             {
                 Console.WriteLine("\n  You start to feel radiating pain that originates from your crotch. You'v caught something undesirable." +
@@ -911,7 +941,7 @@ namespace txtadventure
         }
         static bool openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat)
         {
-            bool cont = true; int[] status = readLineFromSVFileForEvent(3); string txt;
+            bool cont = true; int[] status = readLineFromSVFileForStatus(); string txt;
             while (cont)
             {
                 Console.Clear();
@@ -958,7 +988,7 @@ namespace txtadventure
                                             "\n  12 = HP Potion +, 13 = Buff Potion, 14 = Vox Potion, 15 = Narcotics, 16 = Vampire Ash, 17 = Voxor Ore");
                                         int val4 = int.Parse(Console.ReadLine());
                                         if (val4 == 0) { inventory[val3] = val4; txt = "  Set inventory slot " + (val3 - 3) + " as Empty."; }
-                                        else if (val4 >= 1 && val4 <= 17) { inventory[val3] = val4 + 3; txt = "  Set inventory slot " + (val3 - 3) + " as " + getItemTxtWithJustId(val4) + "."; }
+                                        else if (val4 >= 1 && val4 <= 17) { inventory[val3] = val4 + 3; txt = "  Set inventory slot " + (val3 - 3) + " as " + getItemTxtWithJustId(val4 + 3) + "."; }
                                         else txt = "Invalid number";
                                     }
                                     else txt = "Invalid number";
@@ -1040,7 +1070,7 @@ namespace txtadventure
                                         break;
                                 }
                             }
-                            if (txt == "") txt = "  Your Health amount was set to " + inventory[0];
+                            if (txt == "") txt = "  Your Health amount was set to " + inventory[1];
                         }
                         catch { txt = "Invalid number."; }
                         break;// Health
@@ -1100,7 +1130,7 @@ namespace txtadventure
                             {
                                 Console.WriteLine("  What day number you want to set.");
                                 val3 = int.Parse(Console.ReadLine());
-                                if (val3 > 1) val3 = 1;
+                                if (val3 < 1) val3 = 1;
                                 timeLocat[2] = val3;
                                 txt = "  Your day number was set to " + timeLocat[2];
                             }
@@ -1357,8 +1387,8 @@ namespace txtadventure
                         catch { txt = "Invalid number."; }
                         break;// Victim
                     case "00":
-                        Console.WriteLine("  timeLocat\n  time {0}, location {1}, day {2}\n", timeLocat[0], timeLocat[1], timeLocat[2]);
-                        Console.WriteLine("  status\n  rabbit {0}, std {1}, karma {2}, bounty {3}, drunk {4}, preg {5}, hungry {6}, hangover {7},", status[0], status[1], status[2], status[3], status[4], status[5], status[6], status[7]);
+                        Console.WriteLine("  timeLocat:\n  time {0}, location {1}, day {2}\n", timeLocat[0], timeLocat[1], timeLocat[2]);
+                        Console.WriteLine("  status:\n  rabbit {0}, std {1}, karma {2}, bounty {3}, drunk {4}, preg {5}, hungry {6}, hangover {7},", status[0], status[1], status[2], status[3], status[4], status[5], status[6], status[7]);
                         Console.WriteLine("  skillup {0}, upskill {1}, sexorthreat {2}, mtinfo {3}, horsexha {4}, hungrybaby {5}, pregspeedmod {6},", status[8], status[9], status[10], status[11], status[12], status[13], status[14]);
                         Console.WriteLine("  trauma {0}, victim {1}", status[15], status[16]);
                         break;// Numbers
@@ -1415,7 +1445,7 @@ namespace txtadventure
                                 }
                                 else if (val == 10)
                                 {
-                                    int[] status = readLineFromSVFileForEvent(3);
+                                    int[] status = readLineFromSVFileForStatus();
                                     Console.WriteLine("  Your horses exhaustion level is: " + status[12]);
                                     Console.WriteLine("  Your Current Bounty is: " + status[3]);
                                     Console.WriteLine("  Your Current Bounty is: " + status[2]);
@@ -1434,7 +1464,7 @@ namespace txtadventure
                         while (cont2)
                         {
                             Console.Clear();
-                            printHUD(rawChar, inventory, timeLocat); int[] status = readLineFromSVFileForEvent(3);
+                            printHUD(rawChar, inventory, timeLocat); int[] status = readLineFromSVFileForStatus();
                             Console.WriteLine("  Select inventory slot for item you want to activate or use.");
                             try
                             {
@@ -2205,7 +2235,7 @@ namespace txtadventure
         {
             if (timeLocat[1] == 6 || timeLocat[1] == 13 || timeLocat[1] == 14 || timeLocat[1] == 15 || timeLocat[1] == 26 || timeLocat[1] == 27 || timeLocat[1] == 28)
             {
-                int[] status = readLineFromSVFileForEvent(3); int multiplyer; int nightBonus = 0;// 3 = Bounty(0->) { 0 - 24 = no, 25 - 99 = fine, 100 - 499 = jail, 500 = death penalty}
+                int[] status = readLineFromSVFileForStatus(); int multiplyer; int nightBonus = 0;// 3 = Bounty(0->) { 0 - 24 = no, 25 - 99 = fine, 100 - 499 = jail, 500 = death penalty}
                 if (status[3] >= 25 && status[3] < 100) multiplyer = 1;
                 else if (status[3] >= 100 && status[3] < 250) multiplyer = 2;
                 else if (status[3] >= 250 && status[3] < 500) multiplyer = 3;
@@ -2504,7 +2534,7 @@ namespace txtadventure
         }
         static void abortion(int[] rawChar, int karmaLoss)
         {
-            int[] status = readLineFromSVFileForEvent(3);
+            int[] status = readLineFromSVFileForStatus();
             if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
             if (status[14] >= 4) rawChar[3] += 1;
             if (status[14] >= 5) { rawChar[3] += 4; rawChar[4] += 1; }
@@ -2677,7 +2707,7 @@ namespace txtadventure
         }
         static void changeGenderEvent(int[] rawChar, int[] inventory, int[] timeLocat)
         {
-            int[] status = readLineFromSVFileForEvent(3);
+            int[] status = readLineFromSVFileForStatus();
             if (rawChar[0] == 0) rawChar[0] = 1;
             else rawChar[0] = 0;
             status[10] = 0;
@@ -2693,7 +2723,7 @@ namespace txtadventure
         }
         static void getBlackoutDrunk(int[] rawChar, int[] inventory, int[] timeLocat)
         {
-            Random rnd = new Random(); int[] status = readLineFromSVFileForEvent(3);
+            Random rnd = new Random(); int[] status = readLineFromSVFileForStatus();
             int rahaKadotus = rnd.Next(0, 250 - rawChar[6] * 30);
             int itemKadotusTod = rnd.Next(0, 125 - rawChar[6] * 10);
             int itemKadotus = rnd.Next(3, 12);
@@ -2786,7 +2816,7 @@ namespace txtadventure
             if (endu > 5) endu = 5;
             if (Chari <= 0) Chari = 1;
             Random rnd = new Random(); int money = rnd.Next(Chari * 2, Chari * 6);
-            int[] status = readLineFromSVFileForEvent(3);
+            int[] status = readLineFromSVFileForStatus();
             bool std = false; bool preg = false; int karmaloss = 0;           
             if (status[10] == 0)
             {
@@ -2987,7 +3017,7 @@ namespace txtadventure
         {
             string txt; int[] info; Random rnd = new Random(); bool deathQuit = false;
             info = readLineFromSVFileForEvent(timeLocat[1]);
-            int[] status = readLineFromSVFileForEvent(3);
+            int[] status = readLineFromSVFileForStatus();
             int pregmod = status[14];
             switch (timeLocat[1]) // Sijainti
             {                
