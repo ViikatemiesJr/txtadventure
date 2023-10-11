@@ -1,9 +1,11 @@
 ﻿using System;//
 using System.Collections.Generic;//
+using System.Diagnostics;
 using System.IO;//
 using System.Linq;//
 using System.Text;//
-using System.Threading.Tasks;//
+using System.Threading;//
+
 
 namespace txtadventure
 {
@@ -17,6 +19,7 @@ namespace txtadventure
             int[] rawChar = new int[7]; // 0 = Gender {0 male, 1 female}, 1 = Class {0 warrior, 1 rogue, 2 merchant}, 2 = #Str, 3 = #Agi, 4 = #Char, 5 = #Endu, 6 = #Luck
             int[] inventory = new int[13];
             int[] timeLocat = new int[3];
+            int[] status = new int[17];
             if (valinta != 1)
             {
                 prepareSaveFile();
@@ -24,41 +27,42 @@ namespace txtadventure
                 rawChar = createChar(rawChar);
                 inventory = startInventory(rawChar, inventory);
                 timeLocat[0] = igTime; timeLocat[1] = location; timeLocat[2] = day;
-                writeSaveFile(rawChar, inventory, timeLocat);
+                status = readLineFromSVFileForStatus();
+                writeFullSaveFile(rawChar, inventory, timeLocat, status);                
             }// create new char
             else
-                readSaveFile(rawChar, inventory, timeLocat);
+                readSaveFile(rawChar, inventory, timeLocat, status);
             while (!Quit)
             {
                 int bounty = readSlotFromSVFile(3, 3);
-                printHUD(rawChar, inventory, timeLocat);
-                if (bounty >= 25) Quit = checkForGuards(rawChar, inventory, timeLocat);
+                printHUD(rawChar, inventory, timeLocat, status);
+                if (bounty >= 25) Quit = checkForGuards(rawChar, inventory, timeLocat, status);
                 if (!Quit)
                 {
                     locationDescriptions(timeLocat[1]);
-                    valinta = valintaRak(timeLocat, rawChar, inventory); // Valinta indeksi
+                    valinta = valintaRak(timeLocat, rawChar, inventory, status); // Valinta indeksi
                     if (valinta == -1)
                     {
-                        Quit = false;
-                        writeSaveFile(rawChar, inventory, timeLocat);
+                        Quit = true;
+                        writeFullSaveFile(rawChar, inventory, timeLocat, status);
                     }// Quit käsittely
                     else if (valinta == -2)
                     {
-                        Quit = openInventory(rawChar, inventory, timeLocat);
+                        Quit = openInventory(rawChar, inventory, timeLocat, status);
                     }// Inventory
                     else if (valinta == -3)
                     {
-                        Quit = openDebugMenu(rawChar, inventory, timeLocat);
+                        Quit = openDebugMenu(rawChar, inventory, timeLocat, status);
                     }// Hidden DeBug Menu, open by inputting "tes"
                     else
                     {
                         Console.Clear();
-                        printHUD(rawChar, inventory, timeLocat);
-                        Quit = eventHandler(rawChar, inventory, timeLocat, valinta);
+                        printHUD(rawChar, inventory, timeLocat, status);
+                        Quit = eventHandler(rawChar, inventory, timeLocat, valinta, status);
                         Console.Clear();
                     }// Events
                 }
-                if (!Quit) writeSaveFile(rawChar, inventory, timeLocat);
+                if (!Quit) writeFullSaveFile(rawChar, inventory, timeLocat, status);
             }
             File.Delete("C:\\temp\\txtadventure\\Weaps.txt");
             File.Delete("C:\\temp\\txtadventure\\Items.txt");
@@ -153,8 +157,8 @@ namespace txtadventure
         {
             try
             {
-                try { Console.SetWindowSize(160, 60); }
-                catch { Console.SetWindowSize(160, 40); Console.WriteLine("\nCould not automatically resize console window to optimal size.\n\nPress *Enter* to start the game."); Console.ReadLine(); Console.Clear(); }
+                try { Console.SetWindowSize(170, 60); }
+                catch { Console.SetWindowSize(170, 40); Console.WriteLine("\nCould not automatically resize console window to optimal size.\n\nPress *Enter* to start the game."); Console.ReadLine(); Console.Clear(); }
             }
             catch
             {
@@ -285,11 +289,12 @@ namespace txtadventure
             }
             return value;
         }// 0 = no sv, -1 = ng, 1 = continue
-        static void writeSaveFile(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void writeFullSaveFile(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
             writeLineToSVFile(rawChar, 0);
             writeLineToSVFile(inventory, 1);
             writeLineToSVFile(timeLocat, 2);
+            writeLineToSVFile(status, 3);
         }
         static void writeLineToSVFile(int[] input, int id)
         {
@@ -299,7 +304,7 @@ namespace txtadventure
                 write += input[i] + "!";
             write += "#";
             lines[id] = write;
-            File.WriteAllLines("C:\\temp\\txtadventure\\SVfile.txt", lines);
+            File.WriteAllLines("C:\\temp\\txtadventure\\SVfile.txt", lines);            
         }
         static void writeSlotToSVFile(int lineID, int slot, int nroToSave)
         {
@@ -366,13 +371,14 @@ namespace txtadventure
             lines[id] = write;
             File.WriteAllLines("C:\\temp\\txtadventure\\Items.txt", lines);
         }
-        static void readSaveFile(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void readSaveFile(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
             try
             {
                 readLineFromSVFile(rawChar, 0);
                 readLineFromSVFile(inventory, 1);
                 readLineFromSVFile(timeLocat, 2);
+                readLineFromSVFile(status, 3);
             }
             catch
             {
@@ -444,8 +450,8 @@ namespace txtadventure
         {
             int[] output = new int[4];
             try
-            {                
-                string[] lines = File.ReadAllLines("C:\\temp\\txtadventure\\Weps.txt");
+            {
+                string[] lines = File.ReadAllLines("C:\\temp\\txtadventure\\Weaps.txt");
                 string line = lines[id];
                 int j = 0; string value; bool cont;
                 for (int i = 0; i < output.Length; i++)
@@ -506,7 +512,7 @@ namespace txtadventure
             try
             {
                 string[] lines = File.ReadAllLines("C:\\temp\\txtadventure\\SVfile.txt");
-                string line = lines[3];
+                string line = lines[3];                     
                 int j = 0; string value; bool cont;
                 for (int i = 0; i < output.Length; i++)
                 {
@@ -522,6 +528,7 @@ namespace txtadventure
                         j++;
                     }
                 }
+                for (int i = 0; i < 50 ; i += 2) { }
             }
             catch
             {
@@ -570,7 +577,7 @@ namespace txtadventure
             return output;
         }
         // Huds and Starting Text
-        static void printHUD(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void printHUD(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
             const int hpmulti = 2;
             Console.Clear(); // W_Size = 160 * 60
@@ -578,7 +585,7 @@ namespace txtadventure
             for (int i = 0; i < 94; i++)
                 Console.Write("-");
             Console.WriteLine("\n{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|", null, null, "1", "2", "3", null, null);
-            Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|{0,2}{7}", null, "Gender:", getItemTxt(inventory, 4), getItemTxt(inventory, 5), getItemTxt(inventory, 6), "Attributes:", "Time: " + updateTimeAndReturnTxt(timeLocat, 0, rawChar, inventory), "For navigation use:");
+            Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|{0,2}{7}", null, "Gender:", getItemTxt(inventory, 4), getItemTxt(inventory, 5), getItemTxt(inventory, 6), "Attributes:", "Time: " + updateTimeAndReturnTxt(timeLocat, 0, rawChar, inventory, status), "For navigation use:");
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|{0,2}{7}", null, getGenderTxt(rawChar), null, null, null, "Str  = " + rawChar[2], "Day: " + timeLocat[2], "Numbers or Letters show next to choice");
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|{0,2}", null, null, "---------------", "---------------", "---------------", "Agi  = " + rawChar[3], "Horse: " + isHorseTxt(inventory));
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|", null, "Skill:", "4", "5", "6", "Char = " + rawChar[4], null);
@@ -834,18 +841,22 @@ namespace txtadventure
                 return "ERROR";
         }
         // Basic Funcs
-        static void dailyChecks(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void dailyChecks(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
-            int[] status = readLineFromSVFileForStatus(); bool trigger = false;
-            if (status[1] > 0 && status[1] + 2 >= timeLocat[2])
+            bool trigger = false;
+            Console.Clear();
+            printHUD(rawChar,inventory,timeLocat, status);
+            if (status[1] > 0 && status[1] + 2 < timeLocat[2])
             {
                 Console.WriteLine("\n  You start to feel radiating pain that originates from your crotch. You'v caught something undesirable." +
                     "\n  One things for sure, aslong as it is not cured, you can't regenerate health and your whole body is quite fragile");
-                status[1] = 0 - rawChar[5]; rawChar[5] = 0; trigger = true;
+                status[1] = -rawChar[5]; 
+                rawChar[5] = 0; 
+                trigger = true;
             }// std
             if (status[7] != 0)
             {
-                Console.WriteLine("Your hangover has passed and you are ready for new day.");
+                Console.WriteLine("\n  Your hangover has passed and you are ready for new day.");
                 status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; trigger = true;
             }// hangover
             if (status[4] >= 1)
@@ -890,13 +901,13 @@ namespace txtadventure
                 }// extreme
                 else if (status[5] >= 91)
                 {
-                    Console.WriteLine("  Your baby has born, and you are back to normal. Just don't forget to feed the baby once every 3 days");
+                    Console.WriteLine("\n  Your baby has born, and you are back to normal. Just don't forget to feed the baby once every 3 days");
                     rawChar[3] += 5; rawChar[4] += 2;
                     status[14] = 1; status[5] = -1;
                 }// birth
                 if ((status[5] >= 9))
                 {
-                    if (status[6] + 4 >= timeLocat[2])
+                    if (status[6] + 4 <= timeLocat[2])
                     {
                         malnutrition = true;
                         if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
@@ -906,10 +917,10 @@ namespace txtadventure
                     }// malnutrition check
                 }
                 if (malnutrition == false) status[5] += 1;
-                else { status[5] = -1; Console.WriteLine("  You caused abortion by malnutrition"); status[2] -= 500; }
+                else { status[5] = -1; Console.WriteLine("\n  You caused abortion by malnutrition"); status[2] -= 500; }
                 trigger = true;
             }// pregnancy
-            if (status[8] + 2 >= timeLocat[2])
+            if (status[8] + 2 <= timeLocat[2] && status[8] != 0)
             {
                 Console.WriteLine("\n  Your skill potion has wore down. You have lost it's buff");
                 rawChar[status[9]] -= 1; status[8] = 0; status[9] = 0; trigger = true;
@@ -920,32 +931,31 @@ namespace txtadventure
                 {
                     if (inventory[i] == 4) { rabbitIs = true; break; }
                 }
-                if (rabbitIs == true || status[0] != 1)
+                if (rabbitIs == true && status[0] != 1)
                 {
-                    Console.WriteLine("  You suddenly feel luckier. Maybe that weird rabbit trinket actually does something.");
+                    Console.WriteLine("\n  You suddenly feel luckier. Maybe that weird rabbit trinket actually does something.");
                     status[0] = 1; rawChar[6] += 1; trigger = true;
                 }
-                else if (rabbitIs != true || status[0] == 1)
+                else if (rabbitIs != true && status[0] == 1)
                 {
-                    Console.WriteLine("  You don't feel extra lucky anymore. Maybe that weird rabbit trinket actually did something.");
+                    Console.WriteLine("\n  You don't feel extra lucky anymore. Maybe that weird rabbit trinket actually did something.");
                     status[0] = 0; rawChar[6] -= 1; trigger = true;
                 }
-            }// rabbits foot
+            }// rabbits foot            
             if (trigger == true)
             {
-                writeLineToSVFile(status, 3);
-                writeSaveFile(rawChar, inventory, timeLocat);
-                Console.WriteLine("\n  Press *Enter* to continue");
-                Console.ReadLine();
+                writeFullSaveFile(rawChar, inventory, timeLocat, status);
+                Console.WriteLine("\n  Press *Enter* to continue test");                
+                Console.ReadLine();                
             }
         }
-        static bool openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat)
+        static bool openDebugMenu(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
-            bool cont = true; int[] status = readLineFromSVFileForStatus(); string txt;
+            bool cont = true; string txt;
             while (cont)
             {
                 Console.Clear();
-                printHUD(rawChar, inventory, timeLocat); txt = ""; int val2;
+                printHUD(rawChar, inventory, timeLocat, status); txt = ""; int val2;
                 Console.WriteLine("  This is DeBug Menu. Using this can make some unwanted stuff to happen. No confirmations in here, what you input will happen." +
                     "\n  This is not intended for regular gameplay. If you input invalid value, nothing will happen and you will be returned to this menu." +
                     "\n\n  0 to 'Exit'" +
@@ -965,7 +975,7 @@ namespace txtadventure
                     "\n  00 to print Numbers.");
                 string val = Console.ReadLine();
                 Console.Clear();
-                printHUD(rawChar, inventory, timeLocat);
+                printHUD(rawChar, inventory, timeLocat, status);
                 switch (val)
                 {
                     case "0":
@@ -1001,7 +1011,7 @@ namespace txtadventure
                                         "\n  TIER 2: Greataxe = 4, Tanto = 5, Scimitar = 6," +
                                         "\n  TIER 3: Voxe = 7, Vogger = 8, Voxord = 9.");
                                     val2 = int.Parse(Console.ReadLine());
-                                    if (val2 >= 0 && val2 <= 9) { inventory[3] = val2; txt = "  Your wwapon was changed to " + getWeapTxt(inventory); }
+                                    if (val2 >= 0 && val2 <= 9) { inventory[3] = val2; txt = "  Your weapon was changed to " + getWeapTxt(inventory); }
                                     else txt = "Invalid number";
                                     break;// change weapon
                                 case "3":
@@ -1193,9 +1203,9 @@ namespace txtadventure
                                     val2 = int.Parse(Console.ReadLine());
                                     if (val2 == 1 || val2 == 2 || val2 == 3)
                                     {
-                                        if (status[1] < 0) rawChar[2] -= status[1];
+                                        if (status[1] < 0) rawChar[5] -= status[1];
                                         if (val2 == 2) status[1] = timeLocat[2];
-                                        else if (val2 == 3) { status[1] = 0 - rawChar[2]; rawChar[2] = 0; }
+                                        else if (val2 == 3) { status[1] = -rawChar[5]; rawChar[5] = 0; }
                                         else status[1] = 0;
                                         if (status[1] == 0) txt2 = "Not Active.";
                                         else if (status[1] > 0) txt2 = "Hiddenly Activated.";
@@ -1396,20 +1406,19 @@ namespace txtadventure
                         txt = "Invalid number.";
                         break;
                 }
-                writeSaveFile(rawChar, inventory, timeLocat);
-                writeLineToSVFile(status, 3);
+                writeFullSaveFile(rawChar, inventory, timeLocat, status);
                 txt += "\n  Press *Enter* to Continue."; Console.WriteLine(txt); Console.ReadLine();
             }
             return false;
         }
-        static bool openInventory(int[] rawChar, int[] inventory, int[] timeLocat)
+        static bool openInventory(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
             bool cont = true; int val; int val2;
             while (cont)
             {
                 bool cont2;
                 Console.Clear();
-                printHUD(rawChar, inventory, timeLocat);
+                printHUD(rawChar, inventory, timeLocat, status);
                 Console.WriteLine("  1 to print item info, 2 to use item, 3 to move item to other slot, 0 to close inventory");
                 switch (Console.ReadLine())
                 {
@@ -1421,7 +1430,7 @@ namespace txtadventure
                         while (cont2)
                         {
                             Console.Clear();
-                            printHUD(rawChar, inventory, timeLocat);
+                            printHUD(rawChar, inventory, timeLocat, status);
                             Console.WriteLine("  Select inventory slot for item info, or 10 for Horse Exhaustion, Current Bounty and Current Karma");
                             try
                             {
@@ -1445,7 +1454,6 @@ namespace txtadventure
                                 }
                                 else if (val == 10)
                                 {
-                                    int[] status = readLineFromSVFileForStatus();
                                     Console.WriteLine("  Your horses exhaustion level is: " + status[12]);
                                     Console.WriteLine("  Your Current Bounty is: " + status[3]);
                                     Console.WriteLine("  Your Current Bounty is: " + status[2]);
@@ -1464,7 +1472,7 @@ namespace txtadventure
                         while (cont2)
                         {
                             Console.Clear();
-                            printHUD(rawChar, inventory, timeLocat); int[] status = readLineFromSVFileForStatus();
+                            printHUD(rawChar, inventory, timeLocat, status);
                             Console.WriteLine("  Select inventory slot for item you want to activate or use.");
                             try
                             {
@@ -1478,19 +1486,19 @@ namespace txtadventure
                                         {
                                             case 5:
                                                 infoTxt = "  Feeding '" + getItemTxtWithJustId(itemId) + "' will consume ration from your inventory. One ration is enough to feed all babies you have.\n  Last time you fed them was during day " + status[13];
-                                                if (status[13] > timeLocat[2]) Console.WriteLine("  Since you'v managed to overfeed, you feel like it's better not to feed them.");
+                                                if (status[13] > timeLocat[2]) Console.WriteLine("  Since you'v managed to overfeed, you feel like it's better not to overfeed them.");
                                                 else if (status[13] == timeLocat[2]) Console.WriteLine("  You'v already fed them today, so you feel like it's better not to feed them today.");
                                                 else
                                                 {
                                                     if (useItemConfirm(infoTxt) == true)
                                                     {
                                                         bool rationIs = false; int i;
-                                                        for (i = 4; i > 12; i++)
+                                                        for (i = 4; i < 12; i++)
                                                         {
                                                             if (inventory[i] == 6) { rationIs = true; break; }
                                                         }
                                                         if (rationIs == false) { Console.WriteLine("  You can't feed your baby since you don't have any rations."); }
-                                                        else { Console.WriteLine("  You have fed your babies one of your rations."); inventory[i] = 0; }
+                                                        else { Console.WriteLine("  You have fed your babies one of your rations."); inventory[i] = 0; status[13] = timeLocat[2]; }
                                                         //inventory[] = 0;
                                                     }
                                                 }
@@ -1503,7 +1511,7 @@ namespace txtadventure
                                                 {
                                                     if (useItemConfirm(infoTxt) == true)
                                                     {
-                                                        inventory[itemId] = 0; status[6] = timeLocat[2];
+                                                        inventory[val + 3] = 0; status[6] = timeLocat[2];
                                                         Console.WriteLine("  You feel full after eating ration.");
                                                     }
                                                 }
@@ -1514,11 +1522,11 @@ namespace txtadventure
                                                     "\n  Just be careful and drink in moderation, you wouldn't want to teleport and 'missplace' some of your items and/or gold, would you?";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0; int drunk = status[4]; int hangover = status[7];
+                                                    inventory[val + 3] = 0; int drunk = status[4]; int hangover = status[7];
                                                     if (hangover == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; Console.WriteLine("  You forget your hangover quite quickly after another brew."); }
                                                     if (drunk == 0) { status[4] = 1; rawChar[2] += 1; rawChar[3] -= 1; rawChar[4] += 2; Console.WriteLine("  You feel drunk, strong and charismatic."); }
                                                     else if (drunk > 0 && drunk <= 5) { status[4] = drunk++; Console.WriteLine(" You drank another beer but it feels like it didn't do anything."); }
-                                                    else if (drunk > 5) getBlackoutDrunk(rawChar, inventory, timeLocat);
+                                                    else if (drunk > 5) getBlackoutDrunk(rawChar, inventory, timeLocat, status);
                                                 }
                                                 break;// beer
                                             case 8:
@@ -1528,7 +1536,7 @@ namespace txtadventure
                                                     "\n  Y or y to drink, anything else cancels this action";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    int category = rnd.Next(-30 + rawChar[6] * 10, 70 + rawChar[6] * 10); int specific = rnd.Next(1, 100);
+                                                    int category = rnd.Next(-30 + rawChar[6] * 10, 70 + rawChar[6] * 10); int specific = rnd.Next(1, 100); inventory[val + 3] = 0;
                                                     if (category >= 90)
                                                     {
                                                         if (specific >= 50)
@@ -1540,7 +1548,7 @@ namespace txtadventure
                                                         else if (specific >= 37 && category < 50)
                                                         {
                                                             inventory[0] += rnd.Next(250,300);
-                                                            updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory);
+                                                            updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory, status);
                                                             Console.WriteLine("  Just after you finished drinking the potion, you notice that the empty vial has turned into small pile of Gold coins." +
                                                                 "\n  So then you try touching something else and it too turns into Gold. After a brief period of making some profit the effect ends.");
                                                         }// gain a lot of money
@@ -1549,7 +1557,7 @@ namespace txtadventure
                                                             if (status[11] == 1)
                                                             {
                                                                 inventory[0] += rnd.Next(250, 300);
-                                                                updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory);
+                                                                updateTimeAndReturnTxt(timeLocat, 5, rawChar, inventory, status);
                                                                 Console.WriteLine("  Just after you finished drinking the potion, you notice that the empty vial has turned into small pile of Gold coins." +
                                                                     "\n  So then you try touching something else and it too turns into Gold. After a brief period of making some profit the effect ends.");
                                                             }
@@ -1642,7 +1650,7 @@ namespace txtadventure
                                                     {
                                                         if (specific >= 72)
                                                         {
-                                                            changeGenderEvent(rawChar, inventory, timeLocat);
+                                                            changeGenderEvent(rawChar, inventory, timeLocat, status);
                                                             string[] gender = { "man.", "woman." };
                                                             Console.WriteLine("  Well it seems like you now have 2 choices, either you keep chuging these wild potions until this effect is reversed," +
                                                                 "\n  or you'll just have to learn to live as a " + gender[rawChar[0]]);
@@ -1753,7 +1761,7 @@ namespace txtadventure
                                                                 }
                                                                 else 
                                                                 {
-                                                                    updateTimeAndReturnTxt(timeLocat, rnd.Next(5760, 7200),rawChar,inventory);
+                                                                    updateTimeAndReturnTxt(timeLocat, rnd.Next(5760, 7200), rawChar, inventory, status);
                                                                     Console.WriteLine("  It was really spicy and you passedout from the pain cause by your burning mouth." +
                                                                         "\n  After gaining your conciousness back you estimate that you were outcold for multiple days.");
                                                                 }
@@ -1762,7 +1770,7 @@ namespace txtadventure
                                                         else
                                                         {
                                                             Console.WriteLine("  You can taste the strong alcohol from this cocktail and then,...");
-                                                            getBlackoutDrunk(rawChar, inventory, timeLocat);
+                                                            getBlackoutDrunk(rawChar, inventory, timeLocat, status);
                                                         }// get blackOutDrunk
                                                     }// Bad // lose hp, lose karma, get bounty, get blackOutDrunk
                                                     else
@@ -1808,60 +1816,61 @@ namespace txtadventure
                                                     "\n  and the best part is that for this effect to apply, you don't need gods approval.";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0; int std = status[1]; int hangover = status[7];
-                                                    if (hangover == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; }
-                                                    if (std == 1) status[1] = 0;
-                                                    else if (std < 0) { rawChar[5] -= std; status[1] = 0; }
+                                                    inventory[val + 3] = 0;// std = status[1]; hangover = status[7];
+                                                    if (status[7] == 1) { status[7] = 0; rawChar[2] += 1; rawChar[3] += 1; rawChar[4] += 1; }
+                                                    if (status[1] > 0) status[1] = 0;
+                                                    else if (status[1] < 0) { rawChar[5] -= status[1]; status[1] = 0; }
                                                     Console.WriteLine("  Whatever physical was ailing you is now gone. Your mental stage will remain the same.");
                                                 }
                                                 break;// cure potion
                                             case 12:
-                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. This will reduce horses exhaustion back to 12 points.";
+                                                infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. This will reduce horses exhaustion back to 0 points.";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0; status[6] = 0; Console.WriteLine("  Your horse seems satisfied and revitalized.");
+                                                    inventory[val + 3] = 0; status[6] = 0; Console.WriteLine("  Your horse seems satisfied and revitalized.");
                                                 }
                                                 break;// hay
                                             case 14:
                                                 infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. Will heal you by 1 point or up to max Health.";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0;
+                                                    inventory[val + 3] = 0;
+                                                    Console.WriteLine("t1");
                                                     if (inventory[1] < rawChar[5] * 2)
                                                     {
                                                         inventory[1] += 1;
                                                         if (inventory[1] > rawChar[5] * 2) inventory[1] = rawChar[5] * 2;
                                                         Console.WriteLine("  You feel a bit better now since the minor scracthes are gone.");
                                                     }
-                                                    Console.WriteLine("  You feel a bit better now, even though it might just be plasebo.");
+                                                    else Console.WriteLine("  You feel a bit better now, even though it might just be plasebo.");
                                                 }
                                                 break;// hp potion minor
                                             case 15:
                                                 infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. Will heal you by 4 points or up to max Health.";
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0;
+                                                    inventory[val + 3] = 0;
                                                     if (inventory[1] < rawChar[5] * 2)
                                                     {
                                                         inventory[1] += 4;
                                                         if (inventory[1] > rawChar[5] * 2) inventory[1] = rawChar[5] * 2;
                                                         Console.WriteLine("  You feel a bit better now since some bigger wounds are healed up.");
                                                     }
-                                                    Console.WriteLine("  You feel a bit better now, even though it might just be plasebo.");
+                                                    else Console.WriteLine("  You feel a bit better now, even though it might just be plasebo.");
                                                 }
                                                 break;// hp potion major
                                             case 16:
                                                 infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. Drinking this concoction will give you temporary boost on one of your base stats." +
-                                                    "\n  But only one buff from this kind of potion can be active at a time. If you already have one such buff, this will replace it." +
-                                                    "\n\n  Input skill to improve: // 1 for Str // 2 for Agi // 3 for Char // 4 for Endu // 5 for Luck //";
+                                                    "\n  But only one buff from this kind of potion can be active at a time. If you already have one such buff, this will replace it.";                                                   
                                                 if (useItemConfirm(infoTxt) == true)
-                                                {
-                                                    inventory[itemId] = 0;
+                                                {                                                    
+                                                    inventory[val + 3] = 0;
                                                     if (status[8] != 0) rawChar[status[9]] -= 1;
                                                     status[8] = timeLocat[2];
                                                     while (cont2)
                                                     {
-                                                        Console.Clear(); printHUD(rawChar, inventory, timeLocat); Console.WriteLine(infoTxt);
+                                                        Console.Clear(); printHUD(rawChar, inventory, timeLocat, status); Console.WriteLine(infoTxt);
+                                                        Console.WriteLine("\n  Input skill to improve: // 1 for Str // 2 for Agi // 3 for Char // 4 for Endu // 5 for Luck //");
                                                         switch (Console.ReadLine())
                                                         {
                                                             case "1":
@@ -1889,14 +1898,14 @@ namespace txtadventure
                                                 break;// skillup potion timed
                                             case 17:
                                                 infoTxt = "  Using item '" + getItemTxtWithJustId(itemId) + "'. Drinking this concoction will give you permanently boost on one of your base stats." +
-                                                    "\n  Though it's name would implie that it contains Voxor Ore. Who even though putting mysterious rocks into a potion would be a great idea?" +
-                                                    "\n\n  Input skill to improve: // 1 for Str // 2 for Agi // 3 for Char // 4 for Endu // 5 for Luck //";
+                                                    "\n  Though it's name would implie that it contains Voxor Ore. Who even though putting mysterious rocks into a potion would be a great idea?";                                                    
                                                 if (useItemConfirm(infoTxt) == true)
                                                 {
-                                                    inventory[itemId] = 0;
+                                                    inventory[val + 3] = 0;
                                                     while (cont2)
                                                     {
-                                                        Console.Clear(); printHUD(rawChar, inventory, timeLocat); Console.WriteLine(infoTxt);
+                                                        Console.Clear(); printHUD(rawChar, inventory, timeLocat, status); Console.WriteLine(infoTxt);
+                                                        Console.WriteLine("\n  Input skill to improve: // 1 for Str // 2 for Agi // 3 for Char // 4 for Endu // 5 for Luck //");
                                                         switch (Console.ReadLine())
                                                         {
                                                             case "1":
@@ -1941,7 +1950,7 @@ namespace txtadventure
                         while (cont2)
                         {
                             Console.Clear();
-                            printHUD(rawChar, inventory, timeLocat);
+                            printHUD(rawChar, inventory, timeLocat, status);
                             Console.WriteLine("  Select inventory slot from where you want to move item.");
                             try
                             {
@@ -1951,7 +1960,7 @@ namespace txtadventure
                                     while (cont2)
                                     {
                                         Console.Clear();
-                                        printHUD(rawChar, inventory, timeLocat);
+                                        printHUD(rawChar, inventory, timeLocat, status);
                                         Console.WriteLine("  Select inventory slot to where you want to move item. if ");
                                         try
                                         {
@@ -1977,7 +1986,7 @@ namespace txtadventure
                         Console.ReadLine();
                         break;
                 }
-                writeSaveFile(rawChar, inventory, timeLocat);
+                writeFullSaveFile(rawChar, inventory, timeLocat, status);
                 Console.Clear();
             }
             return false;
@@ -2144,7 +2153,7 @@ namespace txtadventure
             }
             return inventory;
         }
-        static string updateTimeAndReturnTxt(int[] timeLocat, int step, int[] rawChar, int[] inventory) // example: time 1630, step 90
+        static string updateTimeAndReturnTxt(int[] timeLocat, int step, int[] rawChar, int[] inventory, int[] status) // example: time 1630, step 90
         {
             string txt;
             int tunnit = timeLocat[0] / 100;
@@ -2159,7 +2168,7 @@ namespace txtadventure
                 if (tunnit >= 24)
                     { 
                         tunnit -= 24; timeLocat[2] += 1;
-                        dailyChecks(rawChar, inventory, timeLocat);
+                        dailyChecks(rawChar, inventory, timeLocat, status);
                     }
                 else
                     cont = false;
@@ -2175,7 +2184,7 @@ namespace txtadventure
                 txt += ":0" + minuutit;
             return txt;
         }
-        static int valintaRak(int[] timeLocat, int[] rawChar, int[] inventory)
+        static int valintaRak(int[] timeLocat, int[] rawChar, int[] inventory, int[] status)
         {
             int location = timeLocat[1];
             int igTime = timeLocat[0];
@@ -2214,7 +2223,7 @@ namespace txtadventure
                         Console.WriteLine("Invalid number, press *Enter and try again...");
                         Console.ReadLine();
                         Console.Clear();
-                        printHUD(rawChar, inventory, timeLocat);
+                        printHUD(rawChar, inventory, timeLocat, status);
                         locationDescriptions(location);
                         locationChoicesTxtAndAmount(location, rawChar, igTime);
                     }
@@ -2224,18 +2233,18 @@ namespace txtadventure
                     Console.WriteLine("Invalid selection, press *Enter and try again...");
                     Console.ReadLine();
                     Console.Clear();
-                    printHUD(rawChar, inventory, timeLocat);
+                    printHUD(rawChar, inventory, timeLocat, status);
                     locationDescriptions(location);
                     locationChoicesTxtAndAmount(location, rawChar, igTime);
                 }// Valinnan validointi -> int val
             }
             return val;
         }
-        static bool checkForGuards(int[] rawChar, int[] inventory, int[] timeLocat)
+        static bool checkForGuards(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
             if (timeLocat[1] == 6 || timeLocat[1] == 13 || timeLocat[1] == 14 || timeLocat[1] == 15 || timeLocat[1] == 26 || timeLocat[1] == 27 || timeLocat[1] == 28)
             {
-                int[] status = readLineFromSVFileForStatus(); int multiplyer; int nightBonus = 0;// 3 = Bounty(0->) { 0 - 24 = no, 25 - 99 = fine, 100 - 499 = jail, 500 = death penalty}
+                int multiplyer; int nightBonus = 0;// 3 = Bounty(0->) { 0 - 24 = no, 25 - 99 = fine, 100 - 499 = jail, 500 = death penalty}
                 if (status[3] >= 25 && status[3] < 100) multiplyer = 1;
                 else if (status[3] >= 100 && status[3] < 250) multiplyer = 2;
                 else if (status[3] >= 250 && status[3] < 500) multiplyer = 3;
@@ -2288,7 +2297,7 @@ namespace txtadventure
                             }
                             if (fled == true) 
                             { 
-                                updateTimeAndReturnTxt(timeLocat, 180, rawChar, inventory);
+                                updateTimeAndReturnTxt(timeLocat, 180, rawChar, inventory, status);
                                 if (timeLocat[1] > 14) timeLocat[1] = 25;
                                 else timeLocat[1] = 12;
                                 Console.WriteLine("  You managed to flee from guards and went lurking into the back alleys after a few hours of hiding you are ready to leave your hiding spot.");
@@ -2296,9 +2305,9 @@ namespace txtadventure
                             else Console.WriteLine("  You failed to flee from the guards and are now forced to face them.");
                             break;
                         case 3:
-                            fled = true; updateTimeAndReturnTxt(timeLocat, 1440,rawChar,inventory); status[12] += 1;
+                            fled = true; updateTimeAndReturnTxt(timeLocat, 1440,rawChar,inventory, status); status[12] += 1;
                             if (timeLocat[1] == 13 || timeLocat[1] == 14) timeLocat[1] = 6;
-                            else if (timeLocat[1] == 27 || timeLocat[1] == 28) timeLocat[1] = 15;
+                            else timeLocat[1] = 15;
                             Console.WriteLine("  You managed to flee from guards and spend whole day hiding in the outskirts. After full day, you manage to sneak back into the town.");
                             if (status[12] >= 3) Console.WriteLine("  Your horse is completely exhausted. It needs rest or hay.");
                             break;
@@ -2367,15 +2376,21 @@ namespace txtadventure
                                         Console.WriteLine("  You managed to kill the guards that came after you, but soon there might be more of them.");
                                         status[2] -= 500; status[3] += 500;
                                     }
+                                    int loot = rnd.Next(60 + rawChar[6] * 5 + rawChar[2] * 5, (60 + rawChar[6] * 5 + rawChar[2] * 5) * 2); inventory[0] += loot;
+                                    Console.WriteLine("  But atleast you took the chance to loot the guards, you found {0} Gold.", loot);
+                                    loot = rnd.Next(0,100);
+                                    if (loot < 75 - rawChar[6] * 5) loot = 15;
+                                    else loot = 17;
+                                    lootItem(inventory, loot);
                                     if (status[5] >= 6)
                                     {
-                                        if (rnd.Next(-30 + (rawChar[5] + rawChar[6]) * 5, 70 + (rawChar[5] + rawChar[6]) * 5) <= 50){ abortion(rawChar, 100); Console.WriteLine("  Your pregnancy faced abortion due to heavy beating you took during the fight."); }
-                                    }
+                                        if (rnd.Next(-30 + (rawChar[5] + rawChar[6]) * 5, 70 + (rawChar[5] + rawChar[6]) * 5) <= 50){ abortion(rawChar, 100, status); Console.WriteLine("  Your pregnancy faced abortion due to beating you took during the fight."); }
+                                    }                                    
                                 }
                                 else
                                 {
-                                    Console.WriteLine("  You took heavy beating, and gave em' hell too. When it was clear you were about to meet your doom in this fight, you managed to escape.");
-                                    if (status[5] >= 6) { abortion(rawChar, 100); Console.WriteLine("  Your pregnancy faced abortion due to heavy beating you took during the fight."); }
+                                    Console.WriteLine("  You took heavy beating, and gave em' hell too, But when it was clear you were about to meet your doom in this fight, you managed to narrowly escape.");
+                                    if (status[5] >= 6) { abortion(rawChar, 100, status); Console.WriteLine("  Your pregnancy faced abortion due to heavy beating you took during the fight."); }
                                 }
                                 cont = false;
                                 break;
@@ -2385,7 +2400,7 @@ namespace txtadventure
                                 else days = rng = rnd.Next(500, 1000);                                
                                 if (status[5] + days >= 90)
                                 {
-                                    abortion(rawChar, 0);
+                                    abortion(rawChar, 0, status);
                                     if (multiplyer != 5) Console.WriteLine("  You gave birth to a new baby during your imprisonment, and it was taken away from you and sent to nearest monastery to grow up.");
                                     else Console.WriteLine("  As a slave you are not allowed to be pregnant so you are subjected abortion by violence.");
                                 }
@@ -2423,9 +2438,9 @@ namespace txtadventure
                                     {
                                         rawChar[0] = 1; status[10] = 0;
                                         Console.WriteLine("  Shortly after being enslaved you were force fed a slavers potion, since at the time there was no need for male slaves." +
-                                            "\n  This potion turned you into a female since those were easier to sell.");
+                                            "\n  This potion turned you into a female as it made you easier to sell.");
                                     }
-                                    inventory[0] = 0; inventory[2] = 0; inventory[3] = 0; status[15] = 2; status[10] += days; status[1] = 0; rawChar[2] = 0; rawChar[4] = 0; rawChar[5] = 1; inventory[1] = 2;
+                                    inventory[0] = 0; inventory[2] = 0; inventory[3] = 0; status[15] = 2; status[10] += days; status[1] = 0; rawChar[2] = 0; rawChar[4] = 0; rawChar[5] = 1; inventory[1] = 2; timeLocat[1] = 26;
                                     if (rawChar[3] < 5) rawChar[3] = 5;
                                     Console.WriteLine("  You were sold to a questionable establishment as a toy." +
                                         "\n  Being a slave for such extended period of time made you really weak and broke your mind. Since your holes were used daily, you were forced to drink cure potions every few days to keep you as a clean." +
@@ -2433,7 +2448,7 @@ namespace txtadventure
                                         "\n  After countless days, the establishment was forced to closed due to reasons that weren't told to you, so you with your broken mind and body was let go. Once again you were free.");
                                 }
                                 status[3] = 0;
-                                updateTimeAndReturnTxt(timeLocat, days * 1440, rawChar, inventory);
+                                updateTimeAndReturnTxt(timeLocat, days * 1440, rawChar, inventory, status);
                                 cont = false;
                                 break;
                             case 3:
@@ -2445,10 +2460,11 @@ namespace txtadventure
                                 else { val = 2; Console.WriteLine("  At the office, you notice that you lack the required gold, and since you already forfeited your weapon until you pay up, you can only proceed to go to jail."); }
                                 break;
                         }
-                    }                    
-                    writeSaveFile(rawChar, inventory, timeLocat);
-                    writeLineToSVFile(status, 3);
+                    }
+                    writeFullSaveFile(rawChar, inventory, timeLocat, status);
                     Console.WriteLine("  Press *Enter* to continue.");
+                    Console.Clear();
+                    printHUD(rawChar, inventory, timeLocat, status);
                     Console.ReadLine();
                     
                 }
@@ -2507,7 +2523,7 @@ namespace txtadventure
                     Console.WriteLine("  You were fataly wounded but luckily you had some potions in your inventory.\n  In a rush you managed to drink first potion(s) that your hand could reach.");
                     if (minorHP > 0 && majorHP > 0) Console.WriteLine("  You consumed {0} HP Potion and {1} HP Potion +", minorHP, majorHP);
                     else if (minorHP > 0) Console.WriteLine("  You consumed {0} HP Potion", minorHP);
-                    else if (minorHP > 0) Console.WriteLine("  You consumed {0} HP Potion +", majorHP);
+                    else if (majorHP > 0) Console.WriteLine("  You consumed {0} HP Potion +", majorHP);
                     break;
                 }                
             }
@@ -2532,9 +2548,8 @@ namespace txtadventure
             }
             return false;
         }
-        static void abortion(int[] rawChar, int karmaLoss)
+        static void abortion(int[] rawChar, int karmaLoss, int[] status)
         {
-            int[] status = readLineFromSVFileForStatus();
             if (status[14] >= 3) { rawChar[3] += 1; rawChar[4] += 1; }
             if (status[14] >= 4) rawChar[3] += 1;
             if (status[14] >= 5) { rawChar[3] += 4; rawChar[4] += 1; }
@@ -2544,7 +2559,7 @@ namespace txtadventure
         static int fightHandler(int[] rawChar, int[] inventory, int[] timeLocat, int dmgReq, int dmgTaken)
         {
             // return; 0 = dead, 1 = win, 2 = flee,
-            int[] wep = readLineFromWeps(inventory[2]);
+            int[] wep = readLineFromWeps(inventory[3]);
             int str = rawChar[2]; int strReq = wep[2]; int dmg = wep[0]; int dmgDone = 0; int luck = rawChar[6] + 1; int agi = rawChar[3];
             Random rnd = new Random(); int rng;
             if (agi <= 0) agi = 0;
@@ -2555,13 +2570,13 @@ namespace txtadventure
             int hploss; 
             while (true)
             {
-                rng = rnd.Next(20 - (luck + agi * 2) * 5 ,140 - (luck + agi * 2) * 5);
-                if (rng <= 0) rng = 0;
-                else if (rng <= 33) rng = 1;
-                else if (rng <= 75) rng = 2;
-                else rng = 3;
+                rng = rnd.Next(40 - (luck + agi * 2) * 5 ,140 - (luck + agi * 2) * 5);
+                if (rng <= 33) rng = 0;
+                else if (rng <= 66) rng = 1;
+                else rng = 2;
                 hploss = dmgTaken * rng;
                 inventory[1] -= hploss;
+                Console.WriteLine("  You took {0} dmg.", hploss);
                 if (inventory[1] <= 0) looseHpCheckForPots(inventory, rawChar, timeLocat);
                 if (inventory[1] <= 0) 
                 {
@@ -2570,6 +2585,7 @@ namespace txtadventure
                     else { inventory[1] = 1; return 2; }
                 }
                 dmgDone += fight;
+                Console.WriteLine("  You dealt {0} dmg. And total current dmg in this fight is now at {1} / {2} dmg", fight, dmgDone, dmgReq);
                 if (dmgDone >= dmgReq) return 1;
             }            
         }
@@ -2588,7 +2604,7 @@ namespace txtadventure
             Console.WriteLine("\n  Press *Enter* to proceed");
             Console.ReadLine();
         }
-        static void passTime(int[] timeLocat, bool TrueSleep_FalseWait, int[] inventory, int[] rawChar)
+        static void passTime(int[] timeLocat, bool TrueSleep_FalseWait, int[] inventory, int[] rawChar, int[] status)
         {
             int step = 0; bool cont = true;
             while (cont)
@@ -2639,7 +2655,9 @@ namespace txtadventure
                     Console.WriteLine("Invalid input, try again.");
                 }
             }
-            updateTimeAndReturnTxt(timeLocat, step, rawChar, inventory);
+            updateTimeAndReturnTxt(timeLocat, step, rawChar, inventory, status);
+            Console.Clear();
+            printHUD(rawChar, inventory, timeLocat, status);
         }
         static bool buyItemSub(int[] inventory, int id, int invSlot, int itemId)
         {
@@ -2705,25 +2723,64 @@ namespace txtadventure
             else { Console.WriteLine("  You don't have enough Gold to buy this. Press *Enter* to continue."); Console.ReadLine(); }
             return success;
         }
-        static void changeGenderEvent(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void lootItem(int[] inventory, int itemId)
         {
-            int[] status = readLineFromSVFileForStatus();
+            bool room = false;
+            for (int i = 0; i < 9; i++)
+            {
+                int item = inventory[i + 4];
+                if (item != 0)
+                {
+                    int[] itemLine = readLineFromItems(item);
+                    if (itemLine[1] == 1)
+                    { room = true; break; }
+                }
+                else { room = true; break; }
+            }
+            if (room == true)
+            {
+                bool cont = true;
+                Console.WriteLine("  You managed to gain " + getItemTxt(inventory, itemId) + " for free." +
+                    "\n  To wich inventory slot you want to put your new item? Input number shown on inventory slot's upper corner." +
+                    "\n  If slot is already occupied, your old item will be discarded." +
+                    "\n  To discard this new item input number 0") ;
+                while (cont)
+                {
+                    try
+                    {
+                        int invSlot = int.Parse(Console.ReadLine());
+                        if (invSlot >= 1 && invSlot <= 9)
+                        {
+                            invSlot += 3; int id = inventory[invSlot];
+                            cont = buyItemSub(inventory, id, invSlot, itemId);
+                        }
+                        else if (invSlot == 0) { cont = false; Console.WriteLine("  You discarded your loot item."); }
+                        else Console.WriteLine("  Invalid number. Please try again.");
+                    }
+                    catch { Console.WriteLine("  Invalid selection. Please try again."); }
+                }
+            }
+            else if (room == false) { Console.WriteLine("  Full on non-discardable items. Press *Enter* to continue."); Console.ReadLine(); }
+            else { Console.WriteLine("  You don't have enough Gold to buy this. Press *Enter* to continue."); Console.ReadLine(); }
+        }
+        static void changeGenderEvent(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
+        {
             if (rawChar[0] == 0) rawChar[0] = 1;
             else rawChar[0] = 0;
             status[10] = 0;
-            updateTimeAndReturnTxt(timeLocat, 600, rawChar, inventory);
+            updateTimeAndReturnTxt(timeLocat, 600, rawChar, inventory, status);
             Console.WriteLine("  After drinking the whole potion, you feel sleepy and pass out. When you wake up, something doesn't feel right.");
             if (rawChar[0] == 1) Console.WriteLine("  First you notice how your chest now has 2 bumps, and then you realize that something is missing between your legs." +
                 "\n  and as you rise up, you notice how your hair has grown significantly longer.");
             else Console.WriteLine("  First you notice how your chest has turned flat, and then how there is something between your legs that wasn't there earlier." +
                 "\n  and as you rise up, you notice how your hair is now significantly shorter.");
-            if (status[5] != -1) abortion(rawChar, 0);
+            if (status[5] != -1) abortion(rawChar, 0, status);
             if (status[3] != 0) { Console.WriteLine("  Well probably the only good thing is that guards won't recognize you."); status[3] = 0; }
             writeLineToSVFile(status, 3);
         }
-        static void getBlackoutDrunk(int[] rawChar, int[] inventory, int[] timeLocat)
+        static void getBlackoutDrunk(int[] rawChar, int[] inventory, int[] timeLocat, int[] status)
         {
-            Random rnd = new Random(); int[] status = readLineFromSVFileForStatus();
+            Random rnd = new Random();
             int rahaKadotus = rnd.Next(0, 250 - rawChar[6] * 30);
             int itemKadotusTod = rnd.Next(0, 125 - rawChar[6] * 10);
             int itemKadotus = rnd.Next(3, 12);
@@ -2750,14 +2807,14 @@ namespace txtadventure
                 int teleport = rnd.Next(29, 33);
                 timeLocat[1] = teleport;
             }            
-            updateTimeAndReturnTxt(timeLocat, rnd.Next(720, 1440), rawChar, inventory);
-            if (timeLocat[0] > 1800) updateTimeAndReturnTxt(timeLocat, 360, rawChar, inventory);
+            updateTimeAndReturnTxt(timeLocat, rnd.Next(720, 1440), rawChar, inventory, status);
+            if (timeLocat[0] > 1800) updateTimeAndReturnTxt(timeLocat, 360, rawChar, inventory, status);
             if (status[4] != 0) { status[4] = 0; rawChar[2] -= 1; rawChar[3] += 1; rawChar[4] -= 2; } 
             if (status[7] != 1) { status[7] = 1; rawChar[2] -= 1; rawChar[3] -= 1; rawChar[4] -= 1; }
             Console.WriteLine("  Your memory goes blank and you wake up from a random place. You have no recollection of what you might have done.");
             if (status[5] >= 6)
             {
-                if (rnd.Next(0, 100) >= 80) { abortion(rawChar, 100); Console.WriteLine("  But judging by the blood between your legs, you have accidentaly caused abortion."); }
+                if (rnd.Next(0, 100) >= 80) { abortion(rawChar, 100, status); Console.WriteLine("  But judging by the blood between your legs, you have accidentaly caused abortion."); }
             }
             else
             {
@@ -2808,7 +2865,7 @@ namespace txtadventure
             }
             writeLineToSVFile(status, 3);
         }
-        static void seduction(int[] rawChar, int[] inventory, int[] timeLocat, bool sold, int riskFactor, int timeMulti)
+        static void seduction(int[] rawChar, int[] inventory, int[] timeLocat, bool sold, int riskFactor, int timeMulti, int[] status)
         {
             int Chari = rawChar[4]; int luck = rawChar[6]; int endu = rawChar[5];
             if (luck > 5) luck = 5;
@@ -2816,7 +2873,6 @@ namespace txtadventure
             if (endu > 5) endu = 5;
             if (Chari <= 0) Chari = 1;
             Random rnd = new Random(); int money = rnd.Next(Chari * 2, Chari * 6);
-            int[] status = readLineFromSVFileForStatus();
             bool std = false; bool preg = false; int karmaloss = 0;           
             if (status[10] == 0)
             {
@@ -2939,9 +2995,8 @@ namespace txtadventure
             if (sold == true) { inventory[0] += money; status[2] -= karmaloss; };
             if (status[1] == 0 && std == true) status[1] = timeLocat[2];
             status[10] += 1;
-            updateTimeAndReturnTxt(timeLocat, rnd.Next(60,120) * timeMulti, rawChar, inventory);
-            writeSaveFile(rawChar, inventory, timeLocat);            
-            writeLineToSVFile(status, 3);
+            updateTimeAndReturnTxt(timeLocat, rnd.Next(60,120) * timeMulti, rawChar, inventory, status);
+            writeFullSaveFile(rawChar, inventory, timeLocat, status);            
         }
         // Event Handler; Edit Location Subs
         static void locationDescriptions(int location)
@@ -3013,11 +3068,10 @@ namespace txtadventure
             return määrä;
         }// Valintojen kuvaukset Ja määrä
         // Event Handler
-        static bool eventHandler(int[] rawChar, int[] inventory, int[] timeLocat , int valinta)
+        static bool eventHandler(int[] rawChar, int[] inventory, int[] timeLocat , int valinta, int[] status)
         {
             string txt; int[] info; Random rnd = new Random(); bool deathQuit = false;
             info = readLineFromSVFileForEvent(timeLocat[1]);
-            int[] status = readLineFromSVFileForStatus();
             int pregmod = status[14];
             switch (timeLocat[1]) // Sijainti
             {                
@@ -3033,7 +3087,7 @@ namespace txtadventure
                             if (info[1] == 0 || (timeLocat[2]-info[1] >= 3))
                             {
                                 info[1] = timeLocat[2]; writeLineToSVFile(info, timeLocat[1]);
-                                int spentTime = (rnd.Next(50 - rawChar[6], 70 - rawChar[6])) * pregmod; updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory);
+                                int spentTime = (rnd.Next(50 - rawChar[6], 70 - rawChar[6])) * pregmod; updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory, status);
                                 int gold = rnd.Next((rawChar[6] + rawChar[3]) / 2 , rawChar[6] + rawChar[3]); inventory[0] += gold;
                                 txt = "  You spent " + spentTime + " minutes and managed to find " + gold + " Gold.";
                             }
@@ -3088,7 +3142,7 @@ namespace txtadventure
                             if (info[1] == 0 || (timeLocat[2] - info[1] >= 1))
                             {
                                 info[1] = timeLocat[2]; writeLineToSVFile(info, timeLocat[1]);                                
-                                int spentTime = (rnd.Next(60 - rawChar[6] * 2, 120 - rawChar[6] * 2)) * pregmod; updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory);
+                                int spentTime = (rnd.Next(60 - rawChar[6] * 2, 120 - rawChar[6] * 2)) * pregmod; updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory, status);
                                 int gold = rnd.Next(rawChar[6] + rawChar[3], 10 + 2 * (rawChar[6] + rawChar[3])); inventory[0] += gold;
                                 txt = "  You spent " + spentTime + " minutes and managed to find " + gold + " Gold.";
                             }
@@ -3110,7 +3164,7 @@ namespace txtadventure
                             bool cont1 = true;
                             while (cont1)
                             {
-                                Console.Clear(); printHUD(rawChar, inventory, timeLocat);
+                                Console.Clear(); printHUD(rawChar, inventory, timeLocat, status);
                                 Console.WriteLine("  This inn provides some nourishments if you have enough Gold." +
                                     "\n\n  The following items can be bough from here:\n");
                                 // ration // items[0] = 2; items[1] = 1; items[2] = 0; items[3] = 1; writeLineToItems(items, 6);
@@ -3153,7 +3207,7 @@ namespace txtadventure
                                     default:
                                         Console.WriteLine("Invalid input. Press *Enter* to try again."); Console.ReadLine(); break;
                                 }
-                                writeSaveFile(rawChar, inventory, timeLocat);
+                                writeFullSaveFile(rawChar, inventory, timeLocat, status);
                             }
                             txt = "  You'll step away from the bar counter.";
                             eventPrintTxt(txt);
@@ -3168,8 +3222,8 @@ namespace txtadventure
                                     {
                                         inventory[0] -= 3;
                                         Console.Clear();
-                                        printHUD(rawChar, inventory, timeLocat);
-                                        passTime(timeLocat, true, inventory, rawChar);
+                                        printHUD(rawChar, inventory, timeLocat, status);
+                                        passTime(timeLocat, true, inventory, rawChar, status);                                       
                                         txt = "  After refreshing nap you'll return back to the main floor of the 'Halfmoon Inn' and return the room key";
                                     }
                                     else
@@ -3182,14 +3236,14 @@ namespace txtadventure
                             eventPrintTxt(txt);
                             break;// sleep
                         case 3:
-                            passTime(timeLocat, false, inventory, rawChar);
+                            passTime(timeLocat, false, inventory, rawChar, status);
                             txt = "  You don't feel sleepy, but you'll need to wait a bit for optimal time. Atleast you don't have to wait alone since patrons seem quite chatty.";
                             eventPrintTxt(txt);
                             break;// wait
                         case 4:
                             if (info[0] == 0)
                             {
-                                int spentTime = (rnd.Next(90 - (rawChar[6] + rawChar[4]) * 3, 180 - (rawChar[6] + rawChar[4]) * 3)); updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory); info[0] = 1; writeLineToSVFile(info, timeLocat[1]);
+                                int spentTime = (rnd.Next(90 - (rawChar[6] + rawChar[4]) * 3, 180 - (rawChar[6] + rawChar[4]) * 3)); updateTimeAndReturnTxt(timeLocat, spentTime, rawChar, inventory, status); info[0] = 1; writeLineToSVFile(info, timeLocat[1]);
                                 txt = "  You find a lot of rumors, though most of them seem quite useless. But some seem quite interesting." +
                                     "\n  You spent " + spentTime + " minutes to find the following info:\n";
                             }
@@ -3214,7 +3268,7 @@ namespace txtadventure
                             else if (luck > 5) luck = 5;
                             while (cont)
                             {
-                                Console.Clear(); printHUD(rawChar, inventory, timeLocat);
+                                Console.Clear(); printHUD(rawChar, inventory, timeLocat, status);
                                 Console.WriteLine("  Payout table: // §§§ = 20x // $$$ = 15x // £££ = 10x // %%% = 5x //\n");
                                 Console.WriteLine("  Choose the size of the bet. You can bet from 1 to 100 Gold. Enter 0 to stop gambling.");
                                 try
@@ -3355,7 +3409,7 @@ namespace txtadventure
                                                     else if (rng3 > 0.45) result += "§";
                                                     break;// luck 5
                                             }
-                                            Console.Clear(); printHUD(rawChar, inventory, timeLocat);
+                                            Console.Clear(); printHUD(rawChar, inventory, timeLocat, status);
                                             Console.WriteLine("  Payout table: // §§§ = 20x // $$$ = 15x // £££ = 10x // %%% = 5x //\n");
                                             Console.WriteLine("  You got the following symbols // " + result + " //\n");
                                             switch (result)
@@ -3380,8 +3434,8 @@ namespace txtadventure
                                                     Console.WriteLine("  So you Lost " + bet + " Gold, Your current session balance is " + winnings + " Gold.\n  Press *Enter* to continue");
                                                     break;
                                             }
-                                            updateTimeAndReturnTxt(timeLocat, 3, rawChar, inventory);
-                                            writeSaveFile(rawChar, inventory, timeLocat);
+                                            updateTimeAndReturnTxt(timeLocat, 3, rawChar, inventory, status);
+                                            writeFullSaveFile(rawChar, inventory, timeLocat, status);
                                             Console.ReadLine();
                                         }
                                         else
@@ -3409,8 +3463,7 @@ namespace txtadventure
                     }
                     break;// Inn (Fain) {heardRumor}
             }// FEL FAIN (eri switchit joka alueelle (fain, mara, road,))
-            writeSaveFile(rawChar, inventory, timeLocat);
-            writeLineToSVFile(status, 3);
+            writeFullSaveFile(rawChar, inventory, timeLocat, status);
             return deathQuit;
         }// Event Handler
     }
