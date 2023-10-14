@@ -3,6 +3,7 @@ using System.Collections.Generic;//
 using System.Diagnostics;
 using System.IO;//
 using System.Linq;//
+using System.Security.Cryptography;
 using System.Text;//
 using System.Threading;//
 
@@ -2463,10 +2464,9 @@ namespace txtadventure
                     }
                     writeFullSaveFile(rawChar, inventory, timeLocat, status);
                     Console.WriteLine("  Press *Enter* to continue.");
-                    Console.Clear();
-                    printHUD(rawChar, inventory, timeLocat, status);
                     Console.ReadLine();
-                    
+                    Console.Clear();
+                    printHUD(rawChar, inventory, timeLocat, status);                                        
                 }
             }
             return false;
@@ -2740,7 +2740,7 @@ namespace txtadventure
             if (room == true)
             {
                 bool cont = true;
-                Console.WriteLine("  You managed to gain " + getItemTxt(inventory, itemId) + " for free." +
+                Console.WriteLine("  You managed to gain " + getItemTxtWithJustId(itemId) + " for free." +
                     "\n  To wich inventory slot you want to put your new item? Input number shown on inventory slot's upper corner." +
                     "\n  If slot is already occupied, your old item will be discarded." +
                     "\n  To discard this new item input number 0") ;
@@ -2898,6 +2898,8 @@ namespace txtadventure
                         if (rnd.Next(0, 100) >= 101) preg = true;
                         break;
                 }
+                Console.WriteLine("  At first you were quite hesitant to proceed, but after a shortwhile you ended up opening your legs." +
+                    "\n  After the act you are left in a pool of blood and sperm, but it was experience like nothing else.");
             }
             else if (status[10] >= 1 && status[10] < 6)
             {
@@ -2924,6 +2926,8 @@ namespace txtadventure
                         if (rnd.Next(0, 100) >= 98) preg = true;
                         break;
                 }
+                Console.WriteLine("  It's not your first time, but you can still feel the weight of doing something you probably shouldn't do." +
+                    "\n  After the act you are left in a pool of sperm and moral quilt in the back of your mind.");
             }
             else if (status[10] >= 6 && status[10] < 15)
             {
@@ -2950,6 +2954,8 @@ namespace txtadventure
                         if (rnd.Next(0, 100) >= 96) preg = true;
                         break;
                 }
+                Console.WriteLine("  You are starting to get used to oppening your legs to men, and starting to loose the moral burden of doing so." +
+                    "\n  After the act you are left in a pool of sperm. Though recovering from it takes much less time than it used to.");
             }
             else
             {
@@ -2976,6 +2982,8 @@ namespace txtadventure
                         if (rnd.Next(0, 100) >= 94) preg = true;
                         break;
                 }
+                Console.WriteLine("  You are feeling like emotionless machine when you let men cum inside your private parts." +
+                    "\n  When the act is over, you quickly proceed to next thing in your mind.");
             }
             if (status[1] < 0)
             {
@@ -3037,6 +3045,13 @@ namespace txtadventure
                         info = readLineFromSVFileForEvent(location);
                     Console.WriteLine("  This inn isn't that crowded, but still, it's not empty.\n  Perfect place to try to find some rumors, spend some time or steal from the patrons.");
                     break;// inn (Fain)
+                case 8:
+                    if (false == checkIfLineExistsInSVFile(location))
+                    { int[] empty = new int[arrayPituus]; writeLineToSVFile(empty, location); info = empty; }
+                    else
+                        info = readLineFromSVFileForEvent(location);
+                    Console.WriteLine("  As you step in the shop, you are greeted by a friendly smith and warmth of the forge.");
+                    break;// smith (Fain)
             }// FEL FAIN
         }// Paikkojen kuvaukset
         static int locationChoicesTxtAndAmount(int location, int[] rawChar, int igTime)
@@ -3062,6 +3077,10 @@ namespace txtadventure
                     if (readSlotFromSVFile(0, 0) == 1) Console.Write(" 7 to try to make profit by seduction,");
                     else Console.Write(" 7 to start a brawl by threatening to get some loot,");
                     break;// inn (Fain)
+                case 8:
+                    Console.Write("  0 to go back to Main Street, 1 to buy weapons, 2 to ask about rumors, 3 to sell some ore.");
+                    määrä = 4;
+                    break;
             }// FEL FAIN
             Console.Write(" For Inventory use I or i, For Save & Quit use Q or q");
             Console.WriteLine();
@@ -3070,7 +3089,7 @@ namespace txtadventure
         // Event Handler
         static bool eventHandler(int[] rawChar, int[] inventory, int[] timeLocat , int valinta, int[] status)
         {
-            string txt; int[] info; Random rnd = new Random(); bool deathQuit = false;
+            string txt; int[] info; Random rnd = new Random(); bool deathQuit = false; int rng;
             info = readLineFromSVFileForEvent(timeLocat[1]);
             int pregmod = status[14];
             switch (timeLocat[1]) // Sijainti
@@ -3115,9 +3134,10 @@ namespace txtadventure
                             eventPrintTxt(txt);
                             break;// ->'Halfmoon Inn'
                         case 3:
-                            txt = "  TESTI TXT -> go to smith";
+                            timeLocat[1] = 8;
+                            txt = "  You can hear how hammer strikes hot iron, and then you notice there is small shop.";
                             eventPrintTxt(txt);
-                            break;
+                            break;// ->smith
                         case 4:
                             txt = "  TESTI TXT -> go to stable";
                             eventPrintTxt(txt);
@@ -3453,15 +3473,178 @@ namespace txtadventure
                             eventPrintTxt(txt);
                             break;// gamble slots
                         case 6:
-                            txt = "  TESTI TXT stealing";
+                            rng = rnd.Next(0,100); int lootValue = 0;
+                            bool room = false;
+                            for (int i = 0; i < 9; i++)
+                            {
+                                int item = inventory[i + 4];
+                                if (item != 0)
+                                {
+                                    int[] itemLine = readLineFromItems(item);
+                                    if (itemLine[1] == 1)
+                                    { room = true; break; }
+                                }
+                                else { room = true; break; }
+                            }
+                            if (rng > 75 || !room)
+                            {
+                                lootValue = rnd.Next(25 + rawChar[6] * 5, 50 + rawChar[6] * 5);
+                                inventory[0] += lootValue;
+                                txt = "  You managed to steal " + lootValue + " Gold.";
+                            }//gold
+                            else
+                            {
+                                rng = rnd.Next(1,3); int itemId = 0;
+                                switch (rng)
+                                {
+                                    case 1:
+                                        int[] ratioLine = readLineFromItems(6); lootValue = ratioLine[0]; itemId = 6;
+                                        break;// beer
+                                    case 2:
+                                        int[] beerLine = readLineFromItems(7); lootValue = beerLine[0]; itemId = 7;
+                                        break;// ration
+                                    case 3:
+                                        int[] hayLine = readLineFromItems(12); lootValue = hayLine[0]; itemId = 12;
+                                        break;// haybale
+                                    default:
+                                        Console.WriteLine("ERROR in steal item");
+                                        break;
+                                }
+                                lootItem(inventory, itemId);
+                                txt = "  You managed to steal item worth " + lootValue + " Gold.";
+                            }//item
+                            status[2] -= lootValue * 2; // karma
+                            if (rnd.Next(0 - rawChar[6] * 3 - rawChar[3] * 5, 100 - rawChar[6] * 3 - rawChar[3] * 5) >= 50 || rawChar[3] < 2)
+                            {
+                                txt += "  But you got caught. So you dash out of the inn with your ill gotten gains.";
+                                timeLocat[1] = 6;
+                                if (lootValue <= 99)
+                                {
+                                    lootValue *= 2;
+                                    if (lootValue > 99) lootValue = 99;
+                                }
+                                else lootValue *= 2;
+                                status[3] += lootValue;
+                            }// caught
                             eventPrintTxt(txt);
+                            break;// stealing
+                        case 7:
+                            txt = " ";
+                            if (rawChar[0] == 1)
+                            {
+                                if (info[1] < timeLocat[2])
+                                {
+                                    Console.WriteLine("  Your body needs a bit of rest from previous patron, so you can't think about aproaching anybody here for the rest of the day.");
+                                }
+                                else
+                                {
+                                    updateTimeAndReturnTxt(timeLocat, rnd.Next(30, 90), rawChar, inventory, status);
+                                    if (pregmod <= 2)
+                                    {
+                                        Console.WriteLine("  As you scan the room and aproach suitable patrons of the inn, you managed to get one of them interested." +
+                                            "\n  But it seems you need to get physical to get some Gold from this guy. Input Y or y to proceed upstairs to private room.");                                        
+                                        switch (Console.ReadLine())
+                                        {
+                                            case "Y":
+                                            case "y":
+                                                Console.WriteLine("  He goes to rent a room where you agree to meet since he want to keep it discreet." +
+                                                    "\n  After short wait you follow him upstairs to the rented room, where the act happened.");
+                                                seduction(rawChar, inventory, timeLocat, true, 1, 1, status);
+                                                Console.WriteLine("  When you can finally stand up, you walk to the nearby water vat to clean yourself a bit, and leave the room with your payment.");
+                                                info[1] = timeLocat[2];
+                                                break;
+                                            default:
+                                                Console.WriteLine("  You think it would be better not to pursue this patron's money, and accept the fact that you just wasted a bit of your own time.");
+                                                break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("  You tried, but it seems like no men show interest toward you since you are obviously pregnant.");
+                                    }
+                                }
+                            }// seduction
+                            else
+                            {
+                                if (info[1] < timeLocat[2])
+                                {
+                                    Console.WriteLine("  It wouldn't be wise to try to agonize another brawl today.");
+                                }
+                                else
+                                {
+                                    Console.WriteLine("  Trying to threathen some patrons here would quickly escalate into a brawl." +
+                                        "\n  and if there were a brawl, it would be easy to get some loot. Input Y or y for brawl.");
+                                    switch (Console.ReadLine())
+                                    {
+                                        case "Y":
+                                        case "y":
+                                            if (inventory[1] > 1)
+                                            {
+                                                inventory[1] -= 1;
+                                                Console.WriteLine("  You start your malicious threatenings, and soon there is full fledged brawl." +
+                                                    "\n  Easy loot, if you ignore those few punches you took.");
+                                                updateTimeAndReturnTxt(timeLocat, rnd.Next(30, 90), rawChar, inventory, status);
+                                                info[1] = timeLocat[2];
+                                                rng = rnd.Next(1, 3); int itemId = 0; int brawlLoot = 0;
+                                                switch (rng)
+                                                {
+                                                    case 1:
+                                                        int[] ratioLine = readLineFromItems(6); brawlLoot = ratioLine[0]; itemId = 6;
+                                                        break;// beer
+                                                    case 2:
+                                                        int[] beerLine = readLineFromItems(7); brawlLoot = beerLine[0]; itemId = 7;
+                                                        break;// ration
+                                                    case 3:
+                                                        int[] hayLine = readLineFromItems(12); brawlLoot = hayLine[0]; itemId = 12;
+                                                        break;// haybale
+                                                    default:
+                                                        Console.WriteLine("ERROR in steal item");
+                                                        break;
+                                                }
+                                                lootItem(inventory, itemId);
+                                                int gold = rnd.Next(10 + rawChar[6] * 5, 25 + rawChar[6] * 5); brawlLoot += gold;
+                                                inventory[0] += gold; status[2] -= brawlLoot;
+                                                Console.WriteLine("  You managed to loot item and " + gold + " Gold");
+                                                
+                                            }
+                                            else
+                                                Console.WriteLine("  You think that in your current condition it would be too dangerous to start a brawl.");
+                                            break;
+                                        default:
+                                            Console.WriteLine("  You think it would be better not to start a brawl.");
+                                            break;
+                                    }
+                                }
+                            }// brawl
+                            writeLineToSVFile(info, 7);
+                            eventPrintTxt(txt);
+                            break;// seduction or brawl
+                    }
+                    break;// Inn (Fain) {heardRumor} {sedu/brawl}
+                case 8:
+                    switch (valinta)
+                    {
+                        case 0:
+                            timeLocat[1] = 6;
+                            txt = "  You decide to head back to Main Street.";
+                            eventPrintTxt(txt);
+                            break;// ->street
+                        case 1:
+                            txt = "TESTI buy weps";
                             break;
-                        case 7:// seduction or brawl
-                            txt = "  TESTI TXT seduction or brawl";
+                        case 2:
+                            txt = "  When you ask about rumors at first he almost instictively says that he doesn't know any, but then" +
+                                "\n  he suddenly asks if you'd be interested in bringing some voxor ore to him. He says that his previous" +
+                                "\n  shipments are quite late and he's running low on that mystical ore. He also tells that if you bring him" +
+                                "\n  5 ore, he would beable to upgrade your weapon with that material, and for any extra ore he's willing to pay to you in Gold." +
+                                "\n  And then he says that it can be mined from specific mine on the road to Fel Mara.";
                             eventPrintTxt(txt);
+                            break;// rumors about ore
+                        case 3:
+                            txt = "TESTI sell ore";
                             break;
                     }
-                    break;// Inn (Fain) {heardRumor}
+                    break;// Smith (Fain) {ore delivered.}
             }// FEL FAIN (eri switchit joka alueelle (fain, mara, road,))
             writeFullSaveFile(rawChar, inventory, timeLocat, status);
             return deathQuit;
