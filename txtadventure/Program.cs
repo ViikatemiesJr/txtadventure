@@ -832,6 +832,47 @@ namespace txtadventure
             }
             return txt;
         }// Aseiden nimet
+        static string getWeapTxtWithID(int id)
+        {
+            string txt;
+            switch (id)
+            {
+                case 0:
+                    txt = "Unarmed";
+                    break;
+                case 1:
+                    txt = "2H Axe";
+                    break;
+                case 2:
+                    txt = "Dagger";
+                    break;
+                case 3:
+                    txt = "Short Sword";
+                    break;
+                case 4:
+                    txt = "Greataxe";
+                    break;
+                case 5:
+                    txt = "Tanto";
+                    break;
+                case 6:
+                    txt = "Scimitar";
+                    break;
+                case 7:
+                    txt = "Voxe";
+                    break;
+                case 8:
+                    txt = "Vogger";
+                    break;
+                case 9:
+                    txt = "Voxord";
+                    break;
+                default:
+                    txt = "ERROR";
+                    break;
+            }
+            return txt;
+        }// Aseiden nimet
         static string isHorseTxt(int[] inventory)
         {
             if (inventory[2] == 1)
@@ -2566,7 +2607,9 @@ namespace txtadventure
             else if (agi >= 5) agi = 5;
             luck /= 2;
             if (luck >= 3) luck = 3;
-            int fight = str * dmg * luck; // 30 if vogger, 3 str, 3 luck 
+            int wepStrMod = 1;
+            if (strReq > str) wepStrMod = 2;
+            int fight = Convert.ToInt32((str * dmg * luck) / wepStrMod); // 30 if vogger, 3 str, 3 luck 
             int hploss; 
             while (true)
             {
@@ -3006,6 +3049,12 @@ namespace txtadventure
             updateTimeAndReturnTxt(timeLocat, rnd.Next(60,120) * timeMulti, rawChar, inventory, status);
             writeFullSaveFile(rawChar, inventory, timeLocat, status);            
         }
+        static void sellWeap(int[] inventory)
+        {
+            int[] weap = readLineFromWeps(inventory[3]);
+            inventory[0] += Convert.ToInt32(Convert.ToDouble(weap[0]) / 2 + 0.5); inventory[3] = 0;
+            Console.WriteLine("  You sold your old weapon for " + Convert.ToInt32(weap[0] / 2) + " Gold.");
+        }
         // Event Handler; Edit Location Subs
         static void locationDescriptions(int location)
         {
@@ -3078,8 +3127,8 @@ namespace txtadventure
                     else Console.Write(" 7 to start a brawl by threatening to get some loot,");
                     break;// inn (Fain)
                 case 8:
-                    Console.Write("  0 to go back to Main Street, 1 to buy weapons, 2 to ask about rumors, 3 to sell some ore.");
-                    määrä = 4;
+                    Console.Write("  0 to go back to Main Street, 1 to buy weapons, 2 to ask about rumors, 3 to sell some ore, 4 to sell your weapon.");
+                    määrä = 5;
                     break;
             }// FEL FAIN
             Console.Write(" For Inventory use I or i, For Save & Quit use Q or q");
@@ -3089,7 +3138,7 @@ namespace txtadventure
         // Event Handler
         static bool eventHandler(int[] rawChar, int[] inventory, int[] timeLocat , int valinta, int[] status)
         {
-            string txt; int[] info; Random rnd = new Random(); bool deathQuit = false; int rng;
+            string txt = "  "; int[] info; Random rnd = new Random(); bool deathQuit = false; int rng; bool cont;
             info = readLineFromSVFileForEvent(timeLocat[1]);
             int pregmod = status[14];
             switch (timeLocat[1]) // Sijainti
@@ -3283,7 +3332,7 @@ namespace txtadventure
                                 "\n  You notice that after bets have been placed, gamemaster pours some liquid to the plate and spinners start to spin." +
                                 "\n  After quick glance you estimate that each symbol has roughly same chance of appearing, though some seem luckier than others.\n\n  Press *Enter* to join in.");
                             Console.ReadLine();
-                            bool cont = true; int winnings = 0; int luck = rawChar[6]; int bet;
+                            cont = true; int winnings = 0; int luck = rawChar[6]; int bet;
                             if (luck < 0) luck = 0;
                             else if (luck > 5) luck = 5;
                             while (cont)
@@ -3630,7 +3679,77 @@ namespace txtadventure
                             eventPrintTxt(txt);
                             break;// ->street
                         case 1:
-                            txt = "TESTI buy weps";
+                            int[] h2axe = readLineFromWeps(1), dagger = readLineFromWeps(2), shSword = readLineFromWeps(3),
+                                gAxe = readLineFromWeps(4), tanto = readLineFromWeps(5), scimi = readLineFromWeps(6),
+                                voxew = readLineFromWeps(7), voggerw = readLineFromWeps(8), voxordw = readLineFromWeps(9);
+                            cont = true;
+                            while (cont)
+                            {
+                                int valAmount = 6;
+                                Console.Clear();
+                                printHUD(rawChar, inventory, timeLocat, status);
+                                Console.WriteLine("        // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", "Tier 1", "Dmg", "Value", "Str Req", "Heavy");
+                                Console.WriteLine("  1 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), h2axe[0], h2axe[1], h2axe[2], h2axe[3]);
+                                Console.WriteLine("  2 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), dagger[0], dagger[1], dagger[2], dagger[3]);
+                                Console.WriteLine("  3 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), shSword[0], shSword[1], shSword[2], shSword[3]);
+
+                                Console.WriteLine("        // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", "Tier 2", "Dmg", "Value", "Str Req", "Heavy");
+                                Console.WriteLine("  4 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), gAxe[0], gAxe[1], gAxe[2], gAxe[3]);
+                                Console.WriteLine("  5 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), tanto[0], tanto[1], tanto[2], tanto[3]);
+                                Console.WriteLine("  6 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), scimi[0], scimi[1], scimi[2], scimi[3]);
+                                if (info[0] >= 5)
+                                {
+                                    Console.WriteLine("        // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", "Tier 3", "Dmg", "Value", "Str Req", "Heavy");
+                                    Console.WriteLine("  7 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), voxew[0], voxew[1], voxew[2], voxew[3]);
+                                    Console.WriteLine("  8 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), voggerw[0], voggerw[1], voggerw[2], voggerw[3]);
+                                    Console.WriteLine("  9 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), voxordw[0], voxordw[1], voxordw[2], voxordw[3]);
+                                    valAmount += 3;
+                                }
+                                Console.WriteLine("  Input 0 to exit buying menu.");
+                                try
+                                {
+                                    int val = int.Parse(Console.ReadLine());
+                                    if (val >= 0 && val <= valAmount)
+                                    {
+                                        cont = false;
+                                        switch (val)
+                                        {
+                                            case 0:
+                                                txt = "  You stop looking at the weapons and decide not to change your weapon, for now.";
+                                                break;
+                                            case 1:
+                                                txt = "  ";
+                                                break;
+                                            case 2:
+                                                txt = "  ";
+                                                break;
+                                            case 3:
+                                                txt = "  ";
+                                                break;
+                                            case 4:
+                                                txt = "  ";
+                                                break;
+                                            case 5:
+                                                txt = "  ";
+                                                break;
+                                            case 6:
+                                                txt = "  ";
+                                                break;
+                                            case 7:
+                                                txt = "  ";
+                                                break;
+                                            case 8:
+                                                txt = "  ";
+                                                break;
+                                            case 9:
+                                                txt = "  ";
+                                                break;
+                                        }
+                                    }
+                                    else { Console.WriteLine("Invalid Number, press *Enter* and try again."); Console.ReadLine(); }
+                                }
+                                catch { Console.WriteLine("Invalid Selection, press *Enter* and try again."); Console.ReadLine(); }
+                            }
                             break;
                         case 2:
                             txt = "  When you ask about rumors at first he almost instictively says that he doesn't know any, but then" +
@@ -3641,8 +3760,141 @@ namespace txtadventure
                             eventPrintTxt(txt);
                             break;// rumors about ore
                         case 3:
-                            txt = "TESTI sell ore";
-                            break;
+                            cont = checkIfHasItem(inventory, 20);
+                            if (cont)
+                            {
+                                int[] vox = readLineFromItems(20); bool sellMoreOre = false; bool sellOre = false;
+                                while (cont)
+                                {
+                                    Console.Clear();
+                                    printHUD(rawChar, inventory, timeLocat, status);
+                                    Console.WriteLine("  Do you want to sell 1 Voxor ore or all you are carrying? So far you have sold " + info[0] + " ore." +
+                                        "\n  0 to cancel ore selling, 1 to sell 1 ore, 2 to sell all you are carrying.");
+                                    switch (Console.ReadLine())
+                                    {
+                                        case "0":
+                                            txt = "  You decide you'd rather hold on to your ore, for now.";
+                                            cont = false;
+                                            break;
+                                        case "1":
+                                            sellOre = true; cont = false;
+                                            break;
+                                        case "2":
+                                            sellMoreOre = true; cont = false;
+                                            break;
+                                        default:
+                                            Console.WriteLine("Invalid selection. Press *Enter* to try again.");
+                                            Console.ReadLine();
+                                            break;
+                                    }                                    
+                                }
+                                if (sellOre || sellMoreOre)
+                                {
+                                    int sold = 0;
+                                    for (int i = 4; i <= 12; i++)
+                                    {
+                                        if (inventory[i] == 20) { inventory[i] = 0; sold++; }
+                                        if (sold == 1 && sellOre) break;
+                                    }
+                                    txt = "  You sold " + sold + " Voxor ore.";
+                                    if (info[0] < 5)
+                                    {
+                                        info[0] += sold;
+                                        if (info[0] >= 5) 
+                                        {
+                                            txt += "\n  You delivered enough Voxor ore to gain free Vox upgraded weapon and ability to buy different one.";                                           
+                                            int upg = 1; // 0 success, 1 no weap, 2 not enough str, 3 not enough str for any. 
+                                            int[] voxe = readLineFromWeps(7);
+                                            int[] vogger = readLineFromWeps(8);
+                                            int[] voxord = readLineFromWeps(9);
+                                            switch (inventory[3])
+                                            {
+                                                case 1:
+                                                case 4:
+                                                    if (rawChar[2] >= voxe[2]) 
+                                                    {
+                                                        sellWeap(inventory);
+                                                        inventory[3] = 7; txt += "\n  You got Voxe for your hardwork."; upg = 0; 
+                                                    }
+                                                    else upg = 2;
+                                                    break;
+                                                case 2:
+                                                case 5:
+                                                    if (rawChar[2] >= vogger[2]) 
+                                                    {
+                                                        sellWeap(inventory);
+                                                        inventory[3] = 8; txt += "\n  You got Vogger for your hardwork."; upg = 0; 
+                                                    }
+                                                    else upg = 2;
+                                                    break;
+                                                case 3:
+                                                case 6:
+                                                    if (rawChar[2] >= voxord[2]) 
+                                                    {
+                                                        sellWeap(inventory);
+                                                        inventory[3] = 9; txt += "\n  You got Voxord for your hardwork."; upg = 0; 
+                                                    }
+                                                    else upg = 2;
+                                                    break;
+                                                default:
+                                                    upg = 1;
+                                                    break;
+                                            }
+                                            if (upg == 2)
+                                            {
+                                                if (rawChar[2] >= voxord[2]) 
+                                                {
+                                                    sellWeap(inventory);
+                                                    inventory[3] = 9; txt += "\n  You got Voxord for your hardwork."; upg = 0; 
+                                                }
+                                                else if (rawChar[2] >= vogger[2]) 
+                                                {
+                                                    sellWeap(inventory);
+                                                    inventory[3] = 8; txt += "\n  You got Vogger for your hardwork."; upg = 0; 
+                                                }
+                                                else upg = 3;
+                                            }
+                                            if (upg == 1 || upg == 3)
+                                            {
+                                                inventory[0] += 5 * vox[0];
+                                                if (upg == 1) txt += "\n  You had no weapon so your upgrade was converted into gold instead.";
+                                                else txt += "\n  You didn't have enough strenght to handle any of the Vox weapons, so your upgrade was converted into gold.";
+                                            }
+                                            if (info[0] > 5)
+                                            {
+                                                inventory[0] += (info[0] - 5) * vox[0];
+                                                txt += "\n  You gained " + ((info[0] - 5) * vox[0]) + " Gold from the ores.";
+                                            }
+                                        }
+                                        else
+                                        {
+                                            txt += "\n  You need to deliver " + (5 - info[0]) + " more ore for the upgrade.";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        info[0] += sold;
+                                        inventory[0] += sold * vox[0];
+                                        txt += "\n  You gained " + (sold * vox[0]) + " Gold from the ores.";
+                                    }                                    
+                                }
+                            }
+                            else txt = "  You don't have any ore to sell.";
+                            eventPrintTxt(txt);
+                            break;// sell ore
+                        case 4:
+                            Console.WriteLine("  You can sell your used weapon for around half the market price. Input Y or y if you want to proceed.");
+                            switch (Console.ReadLine())
+                            {
+                                case "Y":
+                                case "y":
+                                    sellWeap(inventory);
+                                    break;
+                                default:
+                                    txt = "  You decide to hold on to your weapon for now.";
+                                    break;
+                            }
+                            break;// sell weapon
                     }
                     break;// Smith (Fain) {ore delivered.}
             }// FEL FAIN (eri switchit joka alueelle (fain, mara, road,))
