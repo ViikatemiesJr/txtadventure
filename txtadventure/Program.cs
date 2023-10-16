@@ -1,11 +1,10 @@
 ﻿using System;//
 using System.Collections.Generic;//
-using System.Diagnostics;
 using System.IO;//
 using System.Linq;//
-using System.Security.Cryptography;
 using System.Text;//
 using System.Threading;//
+using static System.Net.Mime.MediaTypeNames;
 
 
 namespace txtadventure
@@ -3053,7 +3052,42 @@ namespace txtadventure
         {
             int[] weap = readLineFromWeps(inventory[3]);
             inventory[0] += Convert.ToInt32(Convert.ToDouble(weap[0]) / 2 + 0.5); inventory[3] = 0;
-            Console.WriteLine("  You sold your old weapon for " + Convert.ToInt32(weap[0] / 2) + " Gold.");
+            Console.WriteLine("  You sold your old weapon for " + Convert.ToInt32(Convert.ToDouble(weap[0]) / 2 + 0.5) + " Gold.");
+        }
+        static int getPriceForEqWeap(int[] inventory)
+        {
+            int[] weap = readLineFromWeps(inventory[3]);
+            return Convert.ToInt32(Convert.ToDouble(weap[0]) / 2 + 0.5);
+        }
+        static string buyWeap(int[] inventory, int[] rawChar, int val)
+        {
+            int retGold = getPriceForEqWeap(inventory); bool cont = false; string txt = ""; int[] weap = readLineFromWeps(val);
+            if (weap[1] <= retGold + inventory[0])
+            {
+                if (weap[2] > rawChar[2])
+                {
+                    Console.WriteLine("  You don't have enough Strenght to effectively wield this weapon, do you still want to buy it? Input Y or y to proceed.");
+                    switch (Console.ReadLine())
+                    {
+                        case "Y":
+                        case "y":
+                            cont = true;
+                            break;
+                        default:
+                            txt = "  You picked up the weapon and realized that you need more strenght to wield it so you decided to not buy it.";
+                            break;
+                    }
+                }
+                else cont = true;
+                if (cont)
+                {
+                    sellWeap(inventory);
+                    inventory[0] -= weap[1]; inventory[3] -= 1;
+                    txt = "  You decided to buy " + getWeapTxtWithID(val) + ".";
+                }
+            }
+            else txt = "  You don't have enough Gold to buy this Weapon";
+            return txt;
         }
         // Event Handler; Edit Location Subs
         static void locationDescriptions(int location)
@@ -3705,47 +3739,21 @@ namespace txtadventure
                                     Console.WriteLine("  9 for // {0,10} // {1,7} // {2,7} // {3,7} // {4,7} //", getWeapTxtWithID(1), voxordw[0], voxordw[1], voxordw[2], voxordw[3]);
                                     valAmount += 3;
                                 }
-                                Console.WriteLine("  Input 0 to exit buying menu.");
+                                Console.WriteLine("  Or Input 0 to exit buying menu.\n\n  Legend:" +
+                                    "\n  Tier = Category for organizing that has no other meaning." +
+                                    "\n  Dmg = Major component for how much damage is done during combat." +
+                                    "\n  Value = How much does it cost. Note that your old weapon is sold first (for around half the value.), so you may need less gold." +
+                                    "\n  Str Req = Required minimun strenght to wield effectively in combat. If you don't have enough Strenght, your combat damage is halved." +
+                                    "\n  Heavy = Value of 0 or 1, if value is 1 then it can do breaching and has chance for non-lethal knockdowns when applicable.");
                                 try
                                 {
                                     int val = int.Parse(Console.ReadLine());
-                                    if (val >= 0 && val <= valAmount)
+                                    if (val >= 1 && val <= valAmount)
                                     {
+                                        txt = buyWeap(inventory, rawChar, val);
                                         cont = false;
-                                        switch (val)
-                                        {
-                                            case 0:
-                                                txt = "  You stop looking at the weapons and decide not to change your weapon, for now.";
-                                                break;
-                                            case 1:
-                                                txt = "  ";
-                                                break;
-                                            case 2:
-                                                txt = "  ";
-                                                break;
-                                            case 3:
-                                                txt = "  ";
-                                                break;
-                                            case 4:
-                                                txt = "  ";
-                                                break;
-                                            case 5:
-                                                txt = "  ";
-                                                break;
-                                            case 6:
-                                                txt = "  ";
-                                                break;
-                                            case 7:
-                                                txt = "  ";
-                                                break;
-                                            case 8:
-                                                txt = "  ";
-                                                break;
-                                            case 9:
-                                                txt = "  ";
-                                                break;
-                                        }
                                     }
+                                    else if (val == 0) { txt = "  You stop looking at the weapons and decide not to change your weapon, for now."; cont = false; }
                                     else { Console.WriteLine("Invalid Number, press *Enter* and try again."); Console.ReadLine(); }
                                 }
                                 catch { Console.WriteLine("Invalid Selection, press *Enter* and try again."); Console.ReadLine(); }
