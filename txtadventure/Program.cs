@@ -590,7 +590,7 @@ namespace txtadventure
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|{0,2}", null, null, "---------------", "---------------", "---------------", "Agi  = " + rawChar[3], "Horse: " + isHorseTxt(inventory));
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|", null, "Skill:", "4", "5", "6", "Char = " + rawChar[4], null);
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|", null, getSkillTxt(rawChar), getItemTxt(inventory, 7), getItemTxt(inventory, 8), getItemTxt(inventory, 9), "Endu = " + rawChar[5], "Weapon:");
-            Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|", null, null, null, null, null, "Luck = " + rawChar[6], getWeapTxt(inventory));
+            Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|", null, null, null, null, null, "Luck = " + rawChar[6], getWeapTxtWithID(inventory[3]));
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|", null, "Class:", "---------------", "---------------", "---------------", null, null);
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{2,-15}|{3,-15}|{4,-15}|", null, getClassTxt(rawChar), "7", "8", "9", "Health:", "Gold:");
             Console.WriteLine("{0,2}|{0,2}{1,-11}|{0,2}{5,-12}|{0,2}{6,-13}|{0,2}{2,-13}|{0,2}{3,-13}|{0,2}{4,-13}|", null, null, getItemTxt(inventory, 10), getItemTxt(inventory, 11), getItemTxt(inventory, 12), inventory[1] + " / " + rawChar[5] * hpmulti, inventory[0]);
@@ -790,47 +790,6 @@ namespace txtadventure
             txt = getItemTxtWithJustId(inventory[id]);
             return txt;
         }// Tavara nimet
-        static string getWeapTxt(int[] inventory)
-        {
-            string txt;
-            switch (inventory[3])
-            {
-                case 0:
-                    txt = "Unarmed";
-                    break;
-                case 1:
-                    txt = "2H Axe";
-                    break;
-                case 2:
-                    txt = "Dagger";
-                    break;
-                case 3:
-                    txt = "Short Sword";
-                    break;
-                case 4:
-                    txt = "Greataxe";
-                    break;
-                case 5:
-                    txt = "Tanto";
-                    break;
-                case 6:
-                    txt = "Scimitar";
-                    break;
-                case 7:
-                    txt = "Voxe";
-                    break;
-                case 8:
-                    txt = "Vogger";
-                    break;
-                case 9:
-                    txt = "Voxord";
-                    break;
-                default:
-                    txt = "ERROR";
-                    break;
-            }
-            return txt;
-        }// Aseiden nimet
         static string getWeapTxtWithID(int id)
         {
             string txt;
@@ -1045,14 +1004,14 @@ namespace txtadventure
                                     else txt = "Invalid number";
                                     break;// edit items
                                 case "2":
-                                    Console.WriteLine("  Your current weapon is " + getWeapTxt(inventory));
+                                    Console.WriteLine("  Your current weapon is " + getWeapTxtWithID(inventory[3]));
                                     Console.WriteLine("  What weapon would you like to have?" +
                                         "\n  No weapon = 0" +
                                         "\n  TIER 1: 2H Axe = 1, Dagger = 2, Short Sword = 3" +
                                         "\n  TIER 2: Greataxe = 4, Tanto = 5, Scimitar = 6," +
                                         "\n  TIER 3: Voxe = 7, Vogger = 8, Voxord = 9.");
                                     val2 = int.Parse(Console.ReadLine());
-                                    if (val2 >= 0 && val2 <= 9) { inventory[3] = val2; txt = "  Your weapon was changed to " + getWeapTxt(inventory); }
+                                    if (val2 >= 0 && val2 <= 9) { inventory[3] = val2; txt = "  Your weapon was changed to " + getWeapTxtWithID(inventory[3]); }
                                     else txt = "Invalid number";
                                     break;// change weapon
                                 case "3":
@@ -3135,6 +3094,14 @@ namespace txtadventure
                         info = readLineFromSVFileForEvent(location);
                     Console.WriteLine("  As you step in the shop, you are greeted by a friendly smith and warmth of the forge.");
                     break;// smith (Fain)
+                case 9:
+                    if (false == checkIfLineExistsInSVFile(location))
+                    { int[] empty = new int[arrayPituus]; writeLineToSVFile(empty, location); info = empty; }
+                    else
+                        info = readLineFromSVFileForEvent(location);
+                    int[] horse = readLineFromSVFileForEvent(1);
+                    Console.WriteLine("  You step in stable, and notice that there's only a few horses, but apparently one of them is in sale.");
+                    break;
             }// FEL FAIN
         }// Paikkojen kuvaukset
         static int locationChoicesTxtAndAmount(int location, int[] rawChar, int igTime)
@@ -3163,7 +3130,11 @@ namespace txtadventure
                 case 8:
                     Console.Write("  0 to go back to Main Street, 1 to buy weapons, 2 to ask about rumors, 3 to sell some ore, 4 to sell your weapon.");
                     määrä = 5;
-                    break;
+                    break;// smith (Fain)
+                case 9:
+                    Console.Write("  0 to go back to Main Street, 1 to buy or sell horse, 2 to buy hay.");
+                    määrä = 3;
+                    break;// stable (Fain)
             }// FEL FAIN
             Console.Write(" For Inventory use I or i, For Save & Quit use Q or q");
             Console.WriteLine();
@@ -3758,7 +3729,7 @@ namespace txtadventure
                                 }
                                 catch { Console.WriteLine("Invalid Selection, press *Enter* and try again."); Console.ReadLine(); }
                             }
-                            break;
+                            break;// buy weap
                         case 2:
                             txt = "  When you ask about rumors at first he almost instictively says that he doesn't know any, but then" +
                                 "\n  he suddenly asks if you'd be interested in bringing some voxor ore to him. He says that his previous" +
@@ -3905,6 +3876,79 @@ namespace txtadventure
                             break;// sell weapon
                     }
                     break;// Smith (Fain) {ore delivered.}
+                case 9:
+                    switch (valinta)
+                    {
+                        case 0:
+                            timeLocat[1] = 6;
+                            txt = "  You decide to head back to Main Street.";
+                            eventPrintTxt(txt);
+                            break;// ->street
+                        case 1:
+                            int[] horse = readLineFromItems(2);
+                            if (inventory[2] == 1)
+                            {
+                                Console.WriteLine("  Do you want to sell your horse for " + horse[0] / 2 + " Gold." +
+                                    "\n  Enter Y or y to sell, anything else to cancel.");
+                                switch (Console.ReadLine())
+                                {
+                                    case "Y":
+                                    case "y":
+                                        inventory[2] = 0; inventory[0] += horse[0] / 2; status[12] = 0;
+                                        txt = "  You sold your horse.";
+                                        break;
+                                    default:
+                                        txt = "  You decided to hold on to your horse.";
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("  Do you want to buy horse for " + horse[0] + " Gold." +
+                                    "\n  Enter Y or y to buy, anything else to cancel.");
+                                switch (Console.ReadLine())
+                                {
+                                    case "Y":
+                                    case "y":
+                                        if (inventory[0] >= horse[0])
+                                        {
+                                            inventory[2] = 0; inventory[0] -= horse[0] / 2; status[12] = 0;
+                                            txt = "  You bought horse.";
+                                        }
+                                        else txt = "  You don't have enough Gold to buy this horse.";
+                                        break;
+                                    default:
+                                        txt = "  You decided to not buy horse horse.";
+                                        break;
+                                }
+                            }
+                            eventPrintTxt(txt);
+                            break;// Buy/Sell horse
+                        case 2:
+                            // hay // items[0] = 10; items[1] = 1; items[2] = 0; items[3] = 1; writeLineToItems(items, 12);
+                            int[] hayLine = readLineFromItems(12); int hayPrice;
+                            if (rawChar[4] >= 5) hayPrice = hayLine[0] - 3;
+                            else if (rawChar[4] == 4) hayPrice = hayLine[0] - 1;
+                            else if (rawChar[4] == 2) hayPrice = hayLine[0] + 2;
+                            else if (rawChar[4] == 1) hayPrice = hayLine[0] + 5;
+                            else if (rawChar[4] <= 0) hayPrice = hayLine[0] + 10;
+                            else hayPrice = hayLine[0];
+                            Console.WriteLine("  Do you want to buy Haybale for " + hayPrice + " Gold." +
+                                    "\n  Enter Y or y to buy, anything else to cancel.");
+                            switch (Console.ReadLine())
+                            {
+                                case "Y":
+                                case "y":
+                                    buyItem(inventory, hayPrice, 12);
+                                    break;
+                                default:
+                                    txt = "  You decided to not buy Haybale.";
+                                    break;
+                            }
+                            eventPrintTxt(txt);// Buy hay
+                            break;
+                    }
+                    break;// Stable (Fain)
             }// FEL FAIN (eri switchit joka alueelle (fain, mara, road,))
             writeFullSaveFile(rawChar, inventory, timeLocat, status);
             return deathQuit;
